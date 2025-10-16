@@ -1,0 +1,268 @@
+# =============================================================================
+# Docker Compose para EPP Detector
+# Entorno de desarrollo con hot-reload
+# =============================================================================
+
+version: '3.8'
+
+# =============================================================================
+# Servicios
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # API REST - FastAPI con YOLOv8
+  # ---------------------------------------------------------------------------
+  api:
+    # Build desde Dockerfile local
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_DATE: ${BUILD_DATE:-$(date -u +'%Y-%m-%dT%H:%M:%SZ')}
+        VCS_REF: ${VCS_REF:-dev}
+
+    # Nombre del container
+    container_name: epp-detector-api
+
+    # Tag de la imagen resultante
+    image: epp-detector:latest
+
+    # Puertos expuestos (host:container)
+    ports:
+      - "${API_PORT:-8000}:8000"
+
+    # Variables de entorno
+    # Cargar desde .env (crear con: cp .env.example .env)
+    environment:
+      # Model config
+      - MODEL_PATH=${MODEL_PATH:-models/yolov8n_epp.onnx}
+      - MODEL_TYPE=${MODEL_TYPE:-onnx}
+      - INPUT_SIZE=${INPUT_SIZE:-640}
+      - CONFIDENCE_THRESHOLD=${CONFIDENCE_THRESHOLD:-0.5}
+      - IOU_THRESHOLD=${IOU_THRESHOLD:-0.45}
+
+      # API config
+      - DEBUG=${DEBUG:-false}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+
+      # Hardware
+      - ENABLE_GPU=${ENABLE_GPU:-false}
+      - NUM_WORKERS=${UVICORN_WORKERS:-1}
+
+      # GCP (opcional)
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID:-}
+      - GCP_BUCKET_NAME=${GCP_BUCKET_NAME:-}
+
+    # Volúmenes montados para hot-reload en desarrollo
+    # IMPORTANTE: Descomentar solo en desarrollo, NO en producción
+    volumes:
+      # Código de la API (hot-reload con uvicorn --reload)
+      - ./api:/app/api:ro  # :ro = read-only para seguridad
+
+      # Modelos (para cargar modelo local sin rebuild)
+      - ./models:/app/models:ro
+
+      # Config (para override de .env)
+      - ./.env:/app/.env:ro
+
+      # Logs persistentes (opcional)
+      # - ./logs:/app/logs
+
+    # Política de restart
+    # unless-stopped: Reinicia siempre excepto si se detuvo manualmente
+    restart: unless-stopped
+
+    # Healthcheck (override del Dockerfile si es necesario)
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health').raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Límites de recursos (ajustar según hardware disponible)
+    # Descomentar en producción para evitar que un container consuma todo
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '2.0'
+    #       memory: 4G
+    #     reservations:
+    #       cpus: '1.0'
+    #       memory: 2G
+
+    # Networking
+    networks:
+      - epp-network
+
+    # Dependencias (descomentar cuando agregues otros servicios)
+    # depends_on:
+    #   - db
+    #   - redis
+
+    # Comando override (útil para debugging)
+    # Descomentar para ejecutar con hot-reload
+    # command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload --log-level debug
+
+  # ---------------------------------------------------------------------------
+  # Streamlit Dashboard (TODO: Iteración 8)
+  # ---------------------------------------------------------------------------
+  # streamlit:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.streamlit
+  #   container_name: epp-detector-streamlit
+  #   image: epp-detector-streamlit:latest
+  #   ports:
+  #     - "${STREAMLIT_PORT:-8501}:8501"
+  #   environment:
+  #     - API_URL=http://api:8000
+  #   volumes:
+  #     - ./streamlit_app:/app/streamlit_app:ro
+  #   depends_on:
+  #     - api
+  #   restart: unless-stopped
+  #   networks:
+  #     - epp-network
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Database (TODO: Si se necesita para tracking)
+  # ---------------------------------------------------------------------------
+  # db:
+  #   image: postgres:15-alpine
+  #   container_name: epp-detector-db
+  #   environment:
+  #     - POSTGRES_USER=${DB_USER:-epp_user}
+  #     - POSTGRES_PASSWORD=${DB_PASSWORD:-epp_password}
+  #     - POSTGRES_DB=${DB_NAME:-epp_detector}
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "${DB_PORT:-5432}:5432"
+  #   restart: unless-stopped
+  #   networks:
+  #     - epp-network
+
+  # ---------------------------------------------------------------------------
+  # Redis Cache (TODO: Para cache de inferencias)
+  # ---------------------------------------------------------------------------
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: epp-detector-redis
+  #   command: redis-server --appendonly yes
+  #   volumes:
+  #     - redis_data:/data
+  #   ports:
+  #     - "${REDIS_PORT:-6379}:6379"
+  #   restart: unless-stopped
+  #   networks:
+  #     - epp-network
+
+  # ---------------------------------------------------------------------------
+  # MLflow Tracking Server (TODO: Para tracking de experimentos)
+  # ---------------------------------------------------------------------------
+  # mlflow:
+  #   image: ghcr.io/mlflow/mlflow:latest
+  #   container_name: epp-detector-mlflow
+  #   ports:
+  #     - "${MLFLOW_PORT:-5000}:5000"
+  #   environment:
+  #     - BACKEND_URI=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+  #   depends_on:
+  #     - db
+  #   restart: unless-stopped
+  #   networks:
+  #     - epp-network
+
+# =============================================================================
+# Networks
+# =============================================================================
+
+networks:
+  # Red interna para comunicación entre containers
+  epp-network:
+    driver: bridge
+    # Opcional: subnet customizada
+    # ipam:
+    #   config:
+    #     - subnet: 172.20.0.0/16
+
+# =============================================================================
+# Volumes (persistencia de datos)
+# =============================================================================
+
+volumes:
+  # Volúmenes para persistencia (descomentar cuando se usen servicios)
+  # postgres_data:
+  #   driver: local
+  # redis_data:
+  #   driver: local
+  # mlflow_data:
+  #   driver: local
+  models_data:
+    driver: local
+
+# =============================================================================
+# Uso:
+# =============================================================================
+# Iniciar todos los servicios:
+#   docker-compose up
+#
+# Iniciar en background:
+#   docker-compose up -d
+#
+# Ver logs:
+#   docker-compose logs -f
+#   docker-compose logs -f api
+#
+# Rebuild y restart:
+#   docker-compose up --build
+#
+# Detener servicios:
+#   docker-compose down
+#
+# Detener y eliminar volúmenes:
+#   docker-compose down -v
+#
+# Ejecutar comando en container:
+#   docker-compose exec api bash
+#   docker-compose exec api python -c "from api.config import print_settings; print_settings()"
+#
+# Ver estado de containers:
+#   docker-compose ps
+#
+# Escalar workers (si se configura réplicas):
+#   docker-compose up --scale api=3
+# =============================================================================
+
+# =============================================================================
+# Configuración para diferentes entornos:
+# =============================================================================
+# Development:
+#   docker-compose up
+#   (con volumes montados para hot-reload)
+#
+# Staging:
+#   docker-compose -f docker-compose.yml -f docker-compose.staging.yml up
+#
+# Production:
+#   docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#   (sin volumes de código, con límites de recursos)
+# =============================================================================
+
+# =============================================================================
+# TODOs:
+# =============================================================================
+# TODO: Crear docker-compose.prod.yml para producción (sin volumes de código)
+# TODO: Crear docker-compose.staging.yml para staging
+# TODO: Agregar Nginx reverse proxy para load balancing
+# TODO: Implementar service mesh (Traefik, Istio) para microservicios
+# TODO: Configurar secrets management (Docker Secrets, HashiCorp Vault)
+# TODO: Agregar monitoring stack (Prometheus + Grafana)
+# TODO: Implementar logging centralizado (ELK stack o Loki)
+# TODO: Configurar backups automáticos de volúmenes
+# TODO: Agregar cert-manager para HTTPS automático
+# TODO: Implementar CI/CD con watchtower para auto-updates
+# =============================================================================

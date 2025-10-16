@@ -1,0 +1,258 @@
+# =============================================================================
+# Deployment Workflow - Staging & Production
+# =============================================================================
+# Este workflow automatiza deployment a staging y producción.
+#
+# IMPORTANTE: Este workflow está COMENTADO porque requiere:
+# - Cluster de Kubernetes configurado
+# - Secrets de deployment configurados
+# - Manifests de K8s en directorio k8s/
+#
+# Descomentar y configurar cuando esté listo para deployment automático.
+# =============================================================================
+
+# name: Deploy to Staging & Production
+#
+# on:
+#   # Deploy a staging en push a main
+#   push:
+#     branches:
+#       - main
+#
+#   # Deploy a production en tags de versión
+#   push:
+#     tags:
+#       - 'v*.*.*'
+#
+#   # Manual deployment con input de environment
+#   workflow_dispatch:
+#     inputs:
+#       environment:
+#         description: 'Environment to deploy to'
+#         required: true
+#         type: choice
+#         options:
+#           - staging
+#           - production
+#       version:
+#         description: 'Docker image tag to deploy'
+#         required: false
+#         default: 'latest'
+#
+# env:
+#   REGISTRY: ghcr.io
+#   IMAGE_NAME: ${{ github.repository }}
+#   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+#   GKE_CLUSTER: epp-detector-cluster
+#   GKE_ZONE: us-central1-a
+#
+# # =============================================================================
+# # Jobs
+# # =============================================================================
+#
+# jobs:
+#   # ---------------------------------------------------------------------------
+#   # Deploy a Staging (Google Cloud Run)
+#   # ---------------------------------------------------------------------------
+#   deploy-staging:
+#     name: Deploy to Staging
+#     runs-on: ubuntu-latest
+#     if: github.ref == 'refs/heads/main'
+#     environment:
+#       name: staging
+#       url: https://epp-detector-staging-xyz.run.app
+#
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+#
+#       # Setup Google Cloud SDK
+#       - name: Set up Cloud SDK
+#         uses: google-github-actions/setup-gcloud@v2
+#         with:
+#           service_account_key: ${{ secrets.GCP_SA_KEY }}
+#           project_id: ${{ secrets.GCP_PROJECT_ID }}
+#
+#       # Authenticate to Google Cloud
+#       - name: Authenticate with GCP
+#         run: |
+#           gcloud auth configure-docker
+#
+#       # Deploy to Cloud Run
+#       - name: Deploy to Cloud Run (Staging)
+#         run: |
+#           gcloud run deploy epp-detector-staging \
+#             --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
+#             --platform managed \
+#             --region us-central1 \
+#             --allow-unauthenticated \
+#             --memory 4Gi \
+#             --cpu 2 \
+#             --timeout 300 \
+#             --set-env-vars="ENVIRONMENT=staging,DEBUG=false,LOG_LEVEL=info"
+#
+#       # Get deployed URL
+#       - name: Get service URL
+#         id: get-url
+#         run: |
+#           SERVICE_URL=$(gcloud run services describe epp-detector-staging \
+#             --platform managed \
+#             --region us-central1 \
+#             --format 'value(status.url)')
+#           echo "url=$SERVICE_URL" >> $GITHUB_OUTPUT
+#
+#       # Smoke tests
+#       - name: Run smoke tests
+#         run: |
+#           curl -f ${{ steps.get-url.outputs.url }}/health || exit 1
+#           echo "Staging deployment successful!"
+#
+#   # ---------------------------------------------------------------------------
+#   # Deploy a Production (Kubernetes)
+#   # ---------------------------------------------------------------------------
+#   deploy-production:
+#     name: Deploy to Production
+#     runs-on: ubuntu-latest
+#     if: startsWith(github.ref, 'refs/tags/v')
+#     environment:
+#       name: production
+#       url: https://epp-detector.ejemplo.com
+#
+#     # Requiere aprobación manual
+#     needs: []  # Agregar deploy-staging si queremos staging primero
+#
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+#
+#       # Setup Google Cloud SDK
+#       - name: Set up Cloud SDK
+#         uses: google-github-actions/setup-gcloud@v2
+#         with:
+#           service_account_key: ${{ secrets.GCP_SA_KEY }}
+#           project_id: ${{ secrets.GCP_PROJECT_ID }}
+#
+#       # Get GKE credentials
+#       - name: Get GKE credentials
+#         run: |
+#           gcloud container clusters get-credentials ${{ env.GKE_CLUSTER }} \
+#             --zone ${{ env.GKE_ZONE }} \
+#             --project ${{ env.GCP_PROJECT_ID }}
+#
+#       # Extract version from tag
+#       - name: Extract version
+#         id: version
+#         run: |
+#           VERSION=${GITHUB_REF#refs/tags/v}
+#           echo "version=$VERSION" >> $GITHUB_OUTPUT
+#
+#       # Update K8s manifests with new version
+#       - name: Update Kubernetes manifests
+#         run: |
+#           # Usar kustomize o sed para actualizar image tag
+#           sed -i "s|IMAGE_TAG|${{ steps.version.outputs.version }}|g" k8s/deployment.yml
+#
+#       # Deploy to Kubernetes
+#       - name: Deploy to Kubernetes
+#         run: |
+#           kubectl apply -f k8s/namespace.yml
+#           kubectl apply -f k8s/configmap.yml
+#           kubectl apply -f k8s/secret.yml
+#           kubectl apply -f k8s/deployment.yml
+#           kubectl apply -f k8s/service.yml
+#           kubectl apply -f k8s/ingress.yml
+#
+#       # Wait for rollout
+#       - name: Wait for rollout to complete
+#         run: |
+#           kubectl rollout status deployment/epp-detector -n production --timeout=5m
+#
+#       # Health check
+#       - name: Health check
+#         run: |
+#           # Obtener IP del servicio
+#           SERVICE_IP=$(kubectl get service epp-detector -n production -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+#           # Verificar health endpoint
+#           curl -f http://$SERVICE_IP/health || exit 1
+#
+#       # Rollback si falla
+#       - name: Rollback on failure
+#         if: failure()
+#         run: |
+#           kubectl rollout undo deployment/epp-detector -n production
+#
+#       # Notificar éxito
+#       - name: Notify deployment success
+#         if: success()
+#         run: |
+#           echo "Production deployment successful! Version: ${{ steps.version.outputs.version }}"
+#           # TODO: Enviar notificación a Slack/Email
+#
+#   # ---------------------------------------------------------------------------
+#   # Post-deployment validation
+#   # ---------------------------------------------------------------------------
+#   validate-deployment:
+#     name: Validate Deployment
+#     runs-on: ubuntu-latest
+#     needs: [deploy-production]
+#     if: startsWith(github.ref, 'refs/tags/v')
+#
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+#
+#       # Run integration tests against production
+#       - name: Run integration tests
+#         run: |
+#           # TODO: Ejecutar suite de tests de integración
+#           # pytest tests/integration/ --env=production
+#           echo "Integration tests passed!"
+#
+#       # Performance tests
+#       - name: Run performance tests
+#         run: |
+#           # TODO: Ejecutar load tests con k6 o locust
+#           echo "Performance tests passed!"
+#
+#       # Smoke tests
+#       - name: Run smoke tests
+#         run: |
+#           # TODO: Verificar endpoints críticos
+#           echo "Smoke tests passed!"
+#
+# # =============================================================================
+# # Configuration Requirements
+# # =============================================================================
+# #
+# # GitHub Secrets necesarios:
+# # - GCP_SA_KEY: Service Account JSON key con permisos de deployment
+# # - GCP_PROJECT_ID: ID del proyecto de GCP
+# #
+# # GitHub Environments:
+# # - staging: Sin aprobación requerida
+# # - production: Requiere aprobación manual de 1+ reviewers
+# #
+# # Kubernetes manifests requeridos en k8s/:
+# # - namespace.yml
+# # - configmap.yml
+# # - secret.yml
+# # - deployment.yml
+# # - service.yml
+# # - ingress.yml
+# #
+# # =============================================================================
+#
+# # =============================================================================
+# # TODOs antes de habilitar
+# # =============================================================================
+# # TODO: Crear cluster de Kubernetes (GKE, EKS, AKS)
+# # TODO: Crear manifests de K8s en directorio k8s/
+# # TODO: Configurar secrets de GCP en GitHub
+# # TODO: Configurar GitHub Environments (staging, production)
+# # TODO: Configurar aprobaciones manuales para production
+# # TODO: Implementar rollback automático en caso de fallo
+# # TODO: Configurar notificaciones (Slack, Email, PagerDuty)
+# # TODO: Implementar blue/green deployment o canary releases
+# # TODO: Agregar tests de integración y performance
+# # TODO: Configurar monitoring y alertas post-deployment
+# # =============================================================================

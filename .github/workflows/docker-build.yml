@@ -1,0 +1,302 @@
+# =============================================================================
+# Docker Build & Push - Container Registry
+# =============================================================================
+# Este workflow construye y publica imágenes Docker a GitHub Container Registry
+# en cada push a main o cuando se crea un tag de versión.
+#
+# Triggers:
+# - Push a main → tag: latest
+# - Tag v* (ej: v1.0.0) → tag: version number
+# - Pull request → build test (sin push)
+# =============================================================================
+
+name: Docker Build & Push
+
+on:
+  # Push a branch main
+  push:
+    branches:
+      - main
+    # Ignorar cambios solo en docs
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+
+  # Tags de versión (v1.0.0, v1.2.3-beta, etc.)
+  push:
+    tags:
+      - 'v*.*.*'
+
+  # Pull requests (build test sin push)
+  pull_request:
+    branches:
+      - main
+
+  # Manual trigger
+  workflow_dispatch:
+
+# Variables de entorno
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  # Cambiar a tu registry si usas otro (GCR, ECR, Docker Hub)
+  # REGISTRY: gcr.io
+  # IMAGE_NAME: PROJECT_ID/epp-detector
+
+# =============================================================================
+# Jobs
+# =============================================================================
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Build & Push de imagen Docker
+  # ---------------------------------------------------------------------------
+  build-and-push:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+
+    # Permisos necesarios para GHCR
+    permissions:
+      contents: read
+      packages: write
+      id-token: write  # Para signing (opcional)
+
+    timeout-minutes: 30
+
+    steps:
+      # -----------------------------------------------------------------------
+      # 1. Checkout del código
+      # -----------------------------------------------------------------------
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history para git describe
+
+      # -----------------------------------------------------------------------
+      # 2. Setup de Docker Buildx
+      # Buildx permite builds multi-platform y caching mejorado
+      # -----------------------------------------------------------------------
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          # Habilitar experimental features (multi-platform, etc.)
+          driver-opts: |
+            image=moby/buildkit:latest
+
+      # -----------------------------------------------------------------------
+      # 3. Login a GitHub Container Registry
+      # Solo en push (no en PR)
+      # -----------------------------------------------------------------------
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          # GITHUB_TOKEN es automático, no requiere configuración
+
+      # Para otros registries:
+      # - name: Log in to Google Container Registry
+      #   if: github.event_name != 'pull_request'
+      #   uses: docker/login-action@v3
+      #   with:
+      #     registry: gcr.io
+      #     username: _json_key
+      #     password: ${{ secrets.GCR_JSON_KEY }}
+
+      # -----------------------------------------------------------------------
+      # 4. Extraer metadata (tags, labels)
+      # Genera tags automáticamente según el evento
+      # -----------------------------------------------------------------------
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            # Tag 'latest' en push a main
+            type=raw,value=latest,enable={{is_default_branch}}
+            # Tag de versión desde git tag (v1.0.0 → 1.0.0)
+            type=semver,pattern={{version}}
+            # Tag major.minor (v1.2.3 → 1.2)
+            type=semver,pattern={{major}}.{{minor}}
+            # Tag major (v1.2.3 → 1)
+            type=semver,pattern={{major}}
+            # Tag sha del commit (primeros 7 chars)
+            type=sha,prefix={{branch}}-,format=short
+            # Tag de branch para PRs
+            type=ref,event=pr
+          labels: |
+            org.opencontainers.image.title=EPP Detector
+            org.opencontainers.image.description=API REST para detección de EPP en minería chilena
+            org.opencontainers.image.vendor=Bastián Berríos
+            org.opencontainers.image.url=https://github.com/${{ github.repository }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      # -----------------------------------------------------------------------
+      # 5. Build y Push de imagen
+      # -----------------------------------------------------------------------
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          # Push solo si no es PR
+          push: ${{ github.event_name != 'pull_request' }}
+          # Tags generados por metadata-action
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Build args
+          build-args: |
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+          # Cache layers para builds más rápidos
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # TODO: Habilitar para multi-platform builds (ARM64 + AMD64)
+          # platforms: linux/amd64,linux/arm64
+
+      # -----------------------------------------------------------------------
+      # 6. Vulnerability scanning con Trivy
+      # Escanea la imagen por vulnerabilidades conocidas
+      # -----------------------------------------------------------------------
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        if: github.event_name != 'pull_request'
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          # Fail si hay vulnerabilidades críticas
+          exit-code: '0'  # TODO: Cambiar a '1' para fallar en vulnerabilidades
+
+      # -----------------------------------------------------------------------
+      # 7. Upload Trivy results a GitHub Security
+      # Visible en Security tab del repo
+      # -----------------------------------------------------------------------
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: github.event_name != 'pull_request'
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      # -----------------------------------------------------------------------
+      # 8. Verificar tamaño de imagen
+      # Alertar si supera threshold (500MB)
+      # -----------------------------------------------------------------------
+      - name: Check image size
+        if: github.event_name != 'pull_request'
+        run: |
+          IMAGE_SIZE=$(docker image inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest --format='{{.Size}}')
+          IMAGE_SIZE_MB=$((IMAGE_SIZE / 1024 / 1024))
+          echo "Image size: ${IMAGE_SIZE_MB}MB"
+
+          # Threshold: 500MB
+          if [ $IMAGE_SIZE_MB -gt 500 ]; then
+            echo "::warning::Image size (${IMAGE_SIZE_MB}MB) exceeds 500MB threshold"
+          else
+            echo "::notice::Image size is optimal: ${IMAGE_SIZE_MB}MB"
+          fi
+
+      # -----------------------------------------------------------------------
+      # 9. Create GitHub Release (solo en tags)
+      # -----------------------------------------------------------------------
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          generate_release_notes: true
+          body: |
+            ## Docker Image
+            ```bash
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+            ```
+
+            ## Quick Start
+            ```bash
+            docker run -p 8000:8000 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+            ```
+
+            ## Documentation
+            See [DOCKER.md](docs/DOCKER.md) for complete documentation.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # -----------------------------------------------------------------------
+      # 10. Comment on PR with image info
+      # -----------------------------------------------------------------------
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🐳 Docker Build Test Passed
+
+              **Image tags:**
+              \`\`\`
+              ${{ steps.meta.outputs.tags }}
+              \`\`\`
+
+              **Build digest:** \`${{ steps.build-and-push.outputs.digest }}\`
+
+              ✅ Dockerfile is valid and builds successfully.
+              `
+            })
+
+# =============================================================================
+# Post-deployment steps (TODO)
+# =============================================================================
+# Descomentar cuando se configure deployment automático
+#
+# deploy:
+#   name: Deploy to Staging
+#   needs: build-and-push
+#   runs-on: ubuntu-latest
+#   if: github.ref == 'refs/heads/main'
+#
+#   steps:
+#     - name: Deploy to Google Cloud Run
+#       run: |
+#         gcloud run deploy epp-detector \
+#           --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
+#           --platform managed \
+#           --region us-central1
+# =============================================================================
+
+# =============================================================================
+# Configuración adicional
+# =============================================================================
+# 1. Habilitar GitHub Container Registry:
+#    - Settings → Packages → Improve Container Support → Enable
+#
+# 2. Para usar Google Container Registry (GCR):
+#    - Crear service account con rol Storage Admin
+#    - Descargar JSON key
+#    - Agregar como secret: GCR_JSON_KEY
+#    - Cambiar REGISTRY a gcr.io
+#
+# 3. Para usar Docker Hub:
+#    - Crear token en hub.docker.com
+#    - Agregar secrets: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN
+#    - Cambiar login-action accordingly
+#
+# 4. Multi-platform builds:
+#    - Descomentar platforms en build-and-push step
+#    - Requiere QEMU setup (automático con buildx)
+# =============================================================================
+
+# =============================================================================
+# Badges para README.md
+# =============================================================================
+# [![Docker Build](https://github.com/tu-usuario/epp-detector/actions/workflows/docker-build.yml/badge.svg)](https://github.com/tu-usuario/epp-detector/actions/workflows/docker-build.yml)
+# [![Docker Image Size](https://img.shields.io/docker/image-size/tu-usuario/epp-detector/latest)](https://github.com/tu-usuario/epp-detector/pkgs/container/epp-detector)
+# =============================================================================

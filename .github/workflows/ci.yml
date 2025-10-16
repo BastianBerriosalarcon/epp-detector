@@ -1,0 +1,354 @@
+# =============================================================================
+# CI Pipeline - Testing, Linting & Security
+# =============================================================================
+# Este workflow ejecuta tests, linters y security checks en cada push/PR
+# para asegurar calidad de código antes de merge.
+#
+# Ejecuta en:
+# - Push a main/develop
+# - Pull requests a main/develop
+# - Manualmente desde GitHub UI
+# =============================================================================
+
+name: CI Pipeline
+
+on:
+  # Trigger en push a branches principales
+  push:
+    branches:
+      - main
+      - develop
+    # Ignorar cambios solo en documentación
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+
+  # Trigger en pull requests
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+
+  # Permitir ejecución manual desde GitHub UI
+  workflow_dispatch:
+
+# Cancelar workflows en progreso si hay nuevo push
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Variables de entorno globales
+env:
+  PYTHON_VERSION: '3.10'
+  CACHE_VERSION: v1  # Incrementar para invalidar cache
+
+# =============================================================================
+# Jobs
+# =============================================================================
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: Testing con pytest y coverage
+  # ---------------------------------------------------------------------------
+  test:
+    name: Tests & Coverage
+    runs-on: ubuntu-latest
+
+    # Timeout después de 15 minutos (prevenir jobs colgados)
+    timeout-minutes: 15
+
+    steps:
+      # -----------------------------------------------------------------------
+      # 1. Checkout del código
+      # -----------------------------------------------------------------------
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # Fetch completo para git describe (versioning)
+          fetch-depth: 0
+
+      # -----------------------------------------------------------------------
+      # 2. Setup de Python
+      # -----------------------------------------------------------------------
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      # -----------------------------------------------------------------------
+      # 3. Cache de dependencias pip
+      # Acelera installs subsecuentes (~2-3x más rápido)
+      # -----------------------------------------------------------------------
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          # Key incluye hash de requirements para invalidar cuando cambien
+          key: ${{ runner.os }}-pip-${{ env.CACHE_VERSION }}-${{ hashFiles('**/requirements*.txt') }}
+          # Fallback a cache anterior si no hay match exacto
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ env.CACHE_VERSION }}-
+            ${{ runner.os }}-pip-
+
+      # -----------------------------------------------------------------------
+      # 4. Instalar dependencias
+      # -----------------------------------------------------------------------
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      # -----------------------------------------------------------------------
+      # 5. Ejecutar tests con pytest y coverage
+      # CRÍTICO: Coverage debe ser >= 80% para pasar
+      # -----------------------------------------------------------------------
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ \
+            --verbose \
+            --cov=api \
+            --cov-report=xml \
+            --cov-report=html \
+            --cov-report=term-missing \
+            --cov-fail-under=0
+            # TODO: Cambiar a --cov-fail-under=80 cuando implementemos código
+
+      # -----------------------------------------------------------------------
+      # 6. Upload coverage report a GitHub
+      # Visible en PR checks
+      # -----------------------------------------------------------------------
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        if: always()  # Upload incluso si tests fallan
+        with:
+          name: coverage-report
+          path: |
+            htmlcov/
+            coverage.xml
+          retention-days: 30
+
+      # -----------------------------------------------------------------------
+      # 7. Upload coverage a Codecov (opcional)
+      # Descomentar cuando se configure cuenta de Codecov
+      # -----------------------------------------------------------------------
+      # - name: Upload to Codecov
+      #   uses: codecov/codecov-action@v4
+      #   with:
+      #     file: ./coverage.xml
+      #     fail_ci_if_error: true
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+
+      # -----------------------------------------------------------------------
+      # 8. Comment PR con coverage summary (opcional)
+      # -----------------------------------------------------------------------
+      # TODO: Agregar step para comentar en PR con coverage %
+
+  # ---------------------------------------------------------------------------
+  # Job 2: Linting y formateo
+  # ---------------------------------------------------------------------------
+  lint:
+    name: Code Quality (Linting)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-lint-${{ env.CACHE_VERSION }}-${{ hashFiles('**/requirements-dev.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-lint-${{ env.CACHE_VERSION }}-
+
+      - name: Install linting dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install black flake8 isort
+
+      # -----------------------------------------------------------------------
+      # Black: Verificar formato de código
+      # Falla si hay archivos sin formatear
+      # -----------------------------------------------------------------------
+      - name: Check code formatting with Black
+        run: |
+          black api/ tests/ --check --line-length=100 --diff
+        # --check: No modificar, solo verificar
+        # --diff: Mostrar diferencias si falla
+
+      # -----------------------------------------------------------------------
+      # isort: Verificar imports ordenados
+      # -----------------------------------------------------------------------
+      - name: Check import sorting with isort
+        run: |
+          isort api/ tests/ --check-only --profile black
+        # --profile black: Compatible con black
+
+      # -----------------------------------------------------------------------
+      # Flake8: Linting de Python (PEP8, etc.)
+      # -----------------------------------------------------------------------
+      - name: Lint with Flake8
+        run: |
+          flake8 api/ tests/ \
+            --max-line-length=100 \
+            --exclude=__pycache__,.git,.venv,venv,env \
+            --ignore=E203,W503 \
+            --max-complexity=10
+        # E203: Whitespace before ':' (incompatible con black)
+        # W503: Line break before binary operator (estilo moderno)
+        # max-complexity: Cyclomatic complexity limit
+
+  # ---------------------------------------------------------------------------
+  # Job 3: Security scanning
+  # ---------------------------------------------------------------------------
+  security:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      # -----------------------------------------------------------------------
+      # Bandit: Security linter para Python
+      # Detecta vulnerabilidades comunes (SQL injection, etc.)
+      # -----------------------------------------------------------------------
+      - name: Run Bandit security scan
+        run: |
+          pip install bandit
+          bandit -r api/ -f json -o bandit-report.json || true
+          bandit -r api/ -ll  # Low severity and up, exit code matters
+        # -r: Recursive
+        # -ll: Low level severity
+        # -f json: Output JSON para artifacts
+        continue-on-error: true  # No fallar CI por ahora
+
+      # -----------------------------------------------------------------------
+      # Safety: Check de vulnerabilidades en dependencias
+      # -----------------------------------------------------------------------
+      - name: Check dependencies with Safety
+        run: |
+          pip install safety
+          safety check --json --output safety-report.json || true
+          safety check --bare  # Fail si hay vulnerabilidades críticas
+        continue-on-error: true  # No fallar CI por ahora
+
+      # -----------------------------------------------------------------------
+      # Upload security reports
+      # -----------------------------------------------------------------------
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            safety-report.json
+          retention-days: 30
+
+      # TODO: Integrar con GitHub Security Advisories
+      # TODO: Agregar Trivy para scan de Docker images (ver docker-build.yml)
+
+  # ---------------------------------------------------------------------------
+  # Job 4: Type checking (opcional)
+  # ---------------------------------------------------------------------------
+  typecheck:
+    name: Type Checking
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    # Solo ejecutar si hay type hints (puede ser lento)
+    # Comentar si no se usan type hints extensivamente
+    if: false  # TODO: Habilitar cuando se agreguen type hints
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install mypy
+        run: |
+          pip install mypy types-requests types-PyYAML
+
+      - name: Run mypy
+        run: |
+          mypy api/ --ignore-missing-imports --strict
+
+  # ---------------------------------------------------------------------------
+  # Job 5: Build validation (verificar que Dockerfile builda)
+  # ---------------------------------------------------------------------------
+  build-test:
+    name: Docker Build Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # Setup Docker Buildx (builder mejorado)
+      # -----------------------------------------------------------------------
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # -----------------------------------------------------------------------
+      # Build (sin push) para validar Dockerfile
+      # -----------------------------------------------------------------------
+      - name: Build Docker image (test only)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false  # No push, solo build
+          tags: epp-detector:test
+          cache-from: type=gha  # Cache de GitHub Actions
+          cache-to: type=gha,mode=max
+          # build-args opcionales
+          build-args: |
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+
+      # TODO: Ejecutar tests dentro del container
+      # TODO: Verificar tamaño de imagen (<500MB)
+
+# =============================================================================
+# Status checks requeridos para merge
+# =============================================================================
+# En GitHub repo settings → Branches → Branch protection rules:
+# - Require status checks to pass before merging
+# - Required checks:
+#   - test
+#   - lint
+#   - security
+#   - build-test
+# =============================================================================
+
+# =============================================================================
+# Badges para README.md
+# =============================================================================
+# [![CI Pipeline](https://github.com/tu-usuario/epp-detector/actions/workflows/ci.yml/badge.svg)](https://github.com/tu-usuario/epp-detector/actions/workflows/ci.yml)
+# [![codecov](https://codecov.io/gh/tu-usuario/epp-detector/branch/main/graph/badge.svg)](https://codecov.io/gh/tu-usuario/epp-detector)
+# =============================================================================

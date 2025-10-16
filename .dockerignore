@@ -1,0 +1,97 @@
+# Git
+.git
+.gitignore
+.github
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist
+build
+venv/
+env/
+ENV/
+
+# Documentation
+*.md
+docs/
+README.md
+
+# Notebooks
+notebooks/
+*.ipynb
+
+# Tests
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data (exclude from image)
+data/
+data/raw/
+data/processed/
+data/external/
+data/chile/
+*.csv
+*.parquet
+*.feather
+
+# Images (usar volumen para modelos)
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+
+# Logs
+*.log
+logs/
+
+# ML experiments
+mlruns/
+wandb/
+.mlflow/
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# Docker
+Dockerfile
+Dockerfile.*
+docker-compose.yml
+docker-compose*.yml
+.dockerignore
+
+# Scripts (no necesarios en runtime)
+scripts/
+*.sh
+
+# Documentation (solo incluir api/README.md si es necesario)
+docs/
+README.md
+LICENSE
+CONTRIBUTING.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
