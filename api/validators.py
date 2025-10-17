@@ -64,13 +64,9 @@ class ImageValidator:
 
         if file_ext not in self._allowed_extensions:
             logger.warning(
-                f"Rejected image with unsupported format: {file_ext} "
-                f"(file: {filename})"
+                f"Rejected image with unsupported format: {file_ext} " f"(file: {filename})"
             )
-            raise InvalidImageFormatError(
-                format_detected=file_ext,
-                filename=filename
-            )
+            raise InvalidImageFormatError(format_detected=file_ext, filename=filename)
 
         logger.debug(f"Image format validation passed: {file_ext}")
 
@@ -95,19 +91,12 @@ class ImageValidator:
                 f"(max: {self.settings.max_image_size_mb}MB, file: {filename})"
             )
             raise ImageTooLargeError(
-                size_mb=size_mb,
-                max_mb=self.settings.max_image_size_mb,
-                filename=filename
+                size_mb=size_mb, max_mb=self.settings.max_image_size_mb, filename=filename
             )
 
         logger.debug(f"Image size validation passed: {size_mb:.2f}MB")
 
-    def validate_dimensions(
-        self,
-        width: int,
-        height: int,
-        filename: Optional[str] = None
-    ) -> None:
+    def validate_dimensions(self, width: int, height: int, filename: Optional[str] = None) -> None:
         """Validate that image dimensions are acceptable.
 
         Images must be within minimum and maximum constraints for:
@@ -128,10 +117,7 @@ class ImageValidator:
                 f"(min: {self._min_dimension}x{self._min_dimension}, file: {filename})"
             )
             raise InvalidImageDimensionsError(
-                width=width,
-                height=height,
-                min_dim=self._min_dimension,
-                filename=filename
+                width=width, height=height, min_dim=self._min_dimension, filename=filename
             )
 
         if width > self._max_dimension or height > self._max_dimension:
@@ -140,19 +126,12 @@ class ImageValidator:
                 f"(max: {self._max_dimension}x{self._max_dimension}, file: {filename})"
             )
             raise InvalidImageDimensionsError(
-                width=width,
-                height=height,
-                max_dim=self._max_dimension,
-                filename=filename
+                width=width, height=height, max_dim=self._max_dimension, filename=filename
             )
 
         logger.debug(f"Image dimensions validation passed: {width}x{height}")
 
-    def validate_image_data(
-        self,
-        image_bytes: bytes,
-        filename: Optional[str] = None
-    ) -> None:
+    def validate_image_data(self, image_bytes: bytes, filename: Optional[str] = None) -> None:
         """Validate that image data is not corrupted.
 
         Attempts to open the image with PIL to verify it's a valid
@@ -177,19 +156,12 @@ class ImageValidator:
             )
 
         except Exception as e:
-            logger.error(
-                f"Image data validation failed: {str(e)} (file: {filename})"
-            )
+            logger.error(f"Image data validation failed: {str(e)} (file: {filename})")
             raise InvalidImageError(
-                reason=f"Corrupted or invalid image data: {str(e)}",
-                filename=filename
+                reason=f"Corrupted or invalid image data: {str(e)}", filename=filename
             ) from e
 
-    def validate_all(
-        self,
-        image_bytes: bytes,
-        filename: str
-    ) -> tuple[int, int]:
+    def validate_all(self, image_bytes: bytes, filename: str) -> tuple[int, int]:
         """Perform all validation checks on an image.
 
         This is a convenience method that runs all validation checks
@@ -236,8 +208,7 @@ class ImageValidator:
         except Exception as e:
             logger.error(f"Unexpected error during validation: {str(e)}")
             raise InvalidImageError(
-                reason=f"Failed to process image: {str(e)}",
-                filename=filename
+                reason=f"Failed to process image: {str(e)}", filename=filename
             ) from e
 
         # 4. Validate dimensions

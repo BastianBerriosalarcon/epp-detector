@@ -99,8 +99,7 @@ def validate_image_dimensions(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
-                f"Imagen muy pequeña ({width}x{height}). "
-                f"Mínimo: {min_size}x{min_size} píxeles"
+                f"Imagen muy pequeña ({width}x{height}). " f"Mínimo: {min_size}x{min_size} píxeles"
             ),
         )
 
@@ -108,8 +107,7 @@ def validate_image_dimensions(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
-                f"Imagen muy grande ({width}x{height}). "
-                f"Máximo: {max_size}x{max_size} píxeles"
+                f"Imagen muy grande ({width}x{height}). " f"Máximo: {max_size}x{max_size} píxeles"
             ),
         )
 
@@ -166,8 +164,7 @@ def preprocess_image(
 
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Error al preprocesar imagen: {str(e)}"
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"Error al preprocesar imagen: {str(e)}"
         )
 
 
@@ -213,7 +210,7 @@ def letterbox_resize(
     offset_y = (target_size - new_h) // 2
 
     # Colocar imagen redimensionada en el centro del canvas
-    canvas[offset_y:offset_y + new_h, offset_x:offset_x + new_w] = resized
+    canvas[offset_y : offset_y + new_h, offset_x : offset_x + new_w] = resized
 
     return canvas
 
@@ -248,10 +245,11 @@ def format_detections(
         DeprecationWarning: Esta función está deprecada, usar EPPDetector directamente
     """
     import warnings
+
     warnings.warn(
         "format_detections() está deprecada. Usar EPPDetector._postprocess() directamente.",
         DeprecationWarning,
-        stacklevel=2
+        stacklevel=2,
     )
 
     # Para compatibilidad, retornar lista vacía
@@ -327,10 +325,9 @@ def apply_nms(
             remaining_boxes = class_boxes[sorted_indices[1:]]
 
             # Calcular IoU vectorizado
-            ious = np.array([
-                calculate_iou(best_box.tolist(), box.tolist())
-                for box in remaining_boxes
-            ])
+            ious = np.array(
+                [calculate_iou(best_box.tolist(), box.tolist()) for box in remaining_boxes]
+            )
 
             # Mantener solo boxes con IoU < threshold
             mask = ious < iou_threshold
@@ -469,9 +466,7 @@ def check_epp_compliance(detections: List[Dict[str, Any]]) -> Dict[str, Any]:
         "violations": violations,
         "summary": summary,
         "confidence_avg": (
-            sum(d["confidence"] for d in detections) / len(detections)
-            if detections
-            else 0.0
+            sum(d["confidence"] for d in detections) / len(detections) if detections else 0.0
         ),
     }
 

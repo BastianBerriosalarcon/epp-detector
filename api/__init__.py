@@ -23,16 +23,16 @@ __description__ = "API REST para detección de EPP en minería chilena"
 # NOTE: Dataset uses English class names in alphabetical order
 # Source: Roboflow Construction Site Safety dataset v27
 EPP_CLASSES = {
-    0: "hardhat",           # Casco de seguridad (EPP obligatorio DS 132)
-    1: "mask",              # Mascarilla (no relevante para minería chilena)
-    2: "no_hardhat",        # Sin casco (VIOLACIÓN DS 132)
-    3: "no_mask",           # Sin mascarilla (no relevante)
-    4: "no_safety_vest",    # Sin chaleco (VIOLACIÓN DS 132)
-    5: "person",            # Persona
-    6: "safety_cone",       # Cono de seguridad (contexto)
-    7: "safety_vest",       # Chaleco reflectante (EPP obligatorio DS 132)
-    8: "machinery",         # Maquinaria (contexto)
-    9: "vehicle",           # Vehículo (contexto)
+    0: "hardhat",  # Casco de seguridad (EPP obligatorio DS 132)
+    1: "mask",  # Mascarilla (no relevante para minería chilena)
+    2: "no_hardhat",  # Sin casco (VIOLACIÓN DS 132)
+    3: "no_mask",  # Sin mascarilla (no relevante)
+    4: "no_safety_vest",  # Sin chaleco (VIOLACIÓN DS 132)
+    5: "person",  # Persona
+    6: "safety_cone",  # Cono de seguridad (contexto)
+    7: "safety_vest",  # Chaleco reflectante (EPP obligatorio DS 132)
+    8: "machinery",  # Maquinaria (contexto)
+    9: "vehicle",  # Vehículo (contexto)
 }
 
 # Traducción de clases al español para usuarios finales chilenos
@@ -52,16 +52,16 @@ EPP_CLASSES_ES = {
 
 # Colores para visualización (formato BGR para OpenCV)
 CLASS_COLORS = {
-    "hardhat": (0, 255, 255),        # Amarillo (BGR) - EPP
-    "mask": (255, 200, 0),           # Cyan (BGR)
-    "no_hardhat": (0, 0, 255),       # Rojo (BGR) - VIOLACIÓN
-    "no_mask": (0, 100, 255),        # Naranja oscuro (BGR)
-    "no_safety_vest": (0, 0, 200),   # Rojo oscuro (BGR) - VIOLACIÓN
-    "person": (0, 255, 0),           # Verde (BGR)
-    "safety_cone": (0, 200, 255),    # Amarillo naranja (BGR)
-    "safety_vest": (0, 165, 255),    # Naranja (BGR) - EPP
-    "machinery": (255, 255, 0),      # Cyan claro (BGR)
-    "vehicle": (255, 0, 255),        # Magenta (BGR)
+    "hardhat": (0, 255, 255),  # Amarillo (BGR) - EPP
+    "mask": (255, 200, 0),  # Cyan (BGR)
+    "no_hardhat": (0, 0, 255),  # Rojo (BGR) - VIOLACIÓN
+    "no_mask": (0, 100, 255),  # Naranja oscuro (BGR)
+    "no_safety_vest": (0, 0, 200),  # Rojo oscuro (BGR) - VIOLACIÓN
+    "person": (0, 255, 0),  # Verde (BGR)
+    "safety_cone": (0, 200, 255),  # Amarillo naranja (BGR)
+    "safety_vest": (0, 165, 255),  # Naranja (BGR) - EPP
+    "machinery": (255, 255, 0),  # Cyan claro (BGR)
+    "vehicle": (255, 0, 255),  # Magenta (BGR)
 }
 
 # Configuración de detección

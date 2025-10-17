@@ -118,9 +118,7 @@ class EPPDetector:
         try:
             # Load with retry (3 attempts by default)
             self.model = self._model_loader.load_with_retry(
-                model_path=self.model_path,
-                max_retries=3,
-                retry_delay=1.0
+                model_path=self.model_path, max_retries=3, retry_delay=1.0
             )
 
             # Detect model type from file extension
@@ -129,8 +127,7 @@ class EPPDetector:
             self.is_loaded = True
 
             logger.info(
-                f"Model loaded successfully: {self.model_path.name} "
-                f"(type: {self.model_type})"
+                f"Model loaded successfully: {self.model_path.name} " f"(type: {self.model_type})"
             )
 
         except ModelLoadError as e:
@@ -161,9 +158,7 @@ class EPPDetector:
 
         # Create dummy image of correct size
         dummy_image = np.random.randint(
-            0, 255,
-            (self.input_size, self.input_size, 3),
-            dtype=np.uint8
+            0, 255, (self.input_size, self.input_size, 3), dtype=np.uint8
         )
 
         # Run warmup iterations
@@ -230,10 +225,7 @@ class EPPDetector:
             raise
         except Exception as e:
             logger.error(f"Unexpected error during prediction: {e}", exc_info=True)
-            raise InferenceError(
-                reason=str(e),
-                input_shape=getattr(image, 'shape', None)
-            ) from e
+            raise InferenceError(reason=str(e), input_shape=getattr(image, "shape", None)) from e
 
     def predict_batch(
         self,
@@ -271,7 +263,7 @@ class EPPDetector:
 
         # Process images in batches
         for i in range(0, len(images), batch_size):
-            batch = images[i:i + batch_size]
+            batch = images[i : i + batch_size]
 
             try:
                 # Preprocess batch
@@ -291,9 +283,7 @@ class EPPDetector:
 
             except Exception as e:
                 logger.error(f"Batch inference failed at batch {i//batch_size}: {e}")
-                raise InferenceError(
-                    reason=f"Batch processing failed: {str(e)}"
-                ) from e
+                raise InferenceError(reason=f"Batch processing failed: {str(e)}") from e
 
         logger.debug(f"Batch processing completed: {len(all_results)} results")
         return all_results
@@ -320,9 +310,10 @@ class EPPDetector:
             # Convert to numpy array if needed
             if isinstance(image, (str, Path)):
                 from PIL import Image
+
                 image = Image.open(image)
                 image = np.array(image)
-            elif hasattr(image, 'convert'):  # PIL Image
+            elif hasattr(image, "convert"):  # PIL Image
                 image = np.array(image)
 
             # Ensure RGB format
@@ -350,10 +341,7 @@ class EPPDetector:
             raise InferenceError(f"Preprocessing failed: {str(e)}") from e
 
     def _letterbox_resize(
-        self,
-        image: np.ndarray,
-        target_size: int,
-        color: tuple = (114, 114, 114)
+        self, image: np.ndarray, target_size: int, color: tuple = (114, 114, 114)
     ) -> np.ndarray:
         """
         Resize image with letterboxing to maintain aspect ratio.
@@ -386,7 +374,7 @@ class EPPDetector:
         offset_y = (target_size - new_h) // 2
 
         # Place resized image on canvas
-        canvas[offset_y:offset_y + new_h, offset_x:offset_x + new_w] = resized
+        canvas[offset_y : offset_y + new_h, offset_x : offset_x + new_w] = resized
 
         return canvas
 
@@ -407,10 +395,7 @@ class EPPDetector:
             if self.model_type == "pytorch":
                 # YOLOv8 inference
                 results = self.model(
-                    image,
-                    conf=self.confidence_threshold,
-                    iou=self.iou_threshold,
-                    verbose=False
+                    image, conf=self.confidence_threshold, iou=self.iou_threshold, verbose=False
                 )
                 return results
 
@@ -470,7 +455,7 @@ class EPPDetector:
 
                     # Extract bbox coordinates (center format) and class probabilities
                     boxes_center = predictions[:, :4]  # [x_center, y_center, w, h]
-                    class_probs = predictions[:, 4:]   # [prob_class_0, prob_class_1, ...]
+                    class_probs = predictions[:, 4:]  # [prob_class_0, prob_class_1, ...]
 
                     # Get class with highest probability for each box
                     class_ids = np.argmax(class_probs, axis=1)
@@ -504,9 +489,7 @@ class EPPDetector:
                     ):
                         # Skip invalid class IDs
                         if int(class_id) not in self.class_names:
-                            logger.warning(
-                                f"Skipping detection with invalid class_id: {class_id}"
-                            )
+                            logger.warning(f"Skipping detection with invalid class_id: {class_id}")
                             continue
 
                         detection = {
@@ -580,6 +563,7 @@ class EPPDetector:
                 # Cleanup PyTorch resources
                 del self.model
                 import torch
+
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
                     logger.debug("GPU cache cleared")
@@ -596,10 +580,7 @@ class EPPDetector:
 
         except Exception as e:
             logger.error(f"Error during cleanup: {e}")
-            raise ResourceCleanupError(
-                resource="model",
-                reason=str(e)
-            ) from e
+            raise ResourceCleanupError(resource="model", reason=str(e)) from e
 
     def __del__(self) -> None:
         """Destructor to ensure cleanup on garbage collection."""

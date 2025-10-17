@@ -34,8 +34,7 @@ from api.exceptions import (
 # ============================================================================
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -115,9 +114,7 @@ class Detection(BaseModel):
     class_name: str = Field(..., description="Nombre técnico de la clase (ej: 'hardhat')")
     class_name_es: str = Field(..., description="Nombre en español (ej: 'Casco de seguridad')")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Confianza del modelo")
-    bbox: List[float] = Field(
-        ..., description="Bounding box [x_min, y_min, x_max, y_max]"
-    )
+    bbox: List[float] = Field(..., description="Bounding box [x_min, y_min, x_max, y_max]")
 
 
 class PredictionResponse(BaseModel):
@@ -126,9 +123,7 @@ class PredictionResponse(BaseModel):
     success: bool = Field(..., description="Indica si la inferencia fue exitosa")
     detections: List[Detection] = Field(..., description="Lista de detecciones de EPP")
     inference_time_ms: float = Field(..., description="Tiempo de inferencia en ms")
-    image_size: Dict[str, int] = Field(
-        ..., description="Dimensiones de la imagen procesada"
-    )
+    image_size: Dict[str, int] = Field(..., description="Dimensiones de la imagen procesada")
     total_detections: int = Field(..., description="Total de objetos detectados")
     epp_compliant: bool = Field(
         ..., description="True si se detectó EPP completo (casco + chaleco)"
@@ -159,9 +154,7 @@ class ModelInfo(BaseModel):
     model_version: str = Field(..., description="Versión del modelo YOLOv8")
     model_type: str = Field(..., description="Tipo de modelo (ej: YOLOv8n)")
     classes: Dict[int, str] = Field(..., description="Clases detectables")
-    confidence_threshold: float = Field(
-        ..., description="Umbral de confianza configurado"
-    )
+    confidence_threshold: float = Field(..., description="Umbral de confianza configurado")
     dataset_info: str = Field(..., description="Información del dataset de entrenamiento")
 
 
@@ -183,7 +176,7 @@ def get_detector() -> EPPDetector:
         logger.error("Detector not loaded when requested")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Modelo no disponible. El servicio está iniciando o hay un error."
+            detail="Modelo no disponible. El servicio está iniciando o hay un error.",
         )
     return app_state.detector
 
@@ -235,10 +228,7 @@ async def startup_event() -> None:
     try:
         logger.info(f"Loading model from: {settings.model_path}")
 
-        app_state.detector = EPPDetector(
-            settings=settings,
-            auto_warmup=settings.enable_warmup
-        )
+        app_state.detector = EPPDetector(settings=settings, auto_warmup=settings.enable_warmup)
 
         logger.info(
             f"Model loaded successfully: {app_state.detector.model_type} "
@@ -301,7 +291,7 @@ async def epp_detector_error_handler(request, exc: EPPDetectorError) -> JSONResp
 
     logger.error(
         f"EPP Detector Error: {exc.message}",
-        extra={"details": exc.details, "status_code": status_code}
+        extra={"details": exc.details, "status_code": status_code},
     )
 
     return JSONResponse(
@@ -311,7 +301,7 @@ async def epp_detector_error_handler(request, exc: EPPDetectorError) -> JSONResp
             "error": exc.message,
             "details": exc.details,
             "timestamp": datetime.now().isoformat(),
-        }
+        },
     )
 
 
@@ -334,7 +324,7 @@ async def http_exception_handler(request, exc: HTTPException) -> JSONResponse:
             "success": False,
             "error": exc.detail,
             "timestamp": datetime.now().isoformat(),
-        }
+        },
     )
 
 
@@ -371,9 +361,7 @@ async def health_check() -> HealthResponse:
     Returns:
         HealthResponse: Estado del servicio y modelo
     """
-    model_loaded = (
-        app_state.detector is not None and app_state.detector.is_loaded
-    )
+    model_loaded = app_state.detector is not None and app_state.detector.is_loaded
 
     return HealthResponse(
         status="healthy" if model_loaded else "degraded",
@@ -418,8 +406,7 @@ async def predict_epp(
     except Exception as e:
         logger.error(f"Failed to read uploaded file: {e}")
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Error leyendo imagen: {str(e)}"
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"Error leyendo imagen: {str(e)}"
         )
 
     # Validate image
@@ -436,8 +423,7 @@ async def predict_epp(
     except Exception as e:
         logger.error(f"Failed to open image: {e}")
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No se pudo procesar la imagen"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo procesar la imagen"
         )
 
     # Run inference
@@ -453,7 +439,7 @@ async def predict_epp(
                 class_name=det["class_name"],
                 class_name_es=EPP_CLASSES_ES.get(det["class_name"], det["class_name"]),
                 confidence=det["confidence"],
-                bbox=det["bbox"]
+                bbox=det["bbox"],
             )
             for det in detections_raw
         ]
@@ -515,7 +501,7 @@ async def get_metrics() -> MetricsResponse:
 @app.get("/info", response_model=ModelInfo, tags=["System"])
 async def get_model_info(
     detector: Optional[EPPDetector] = Depends(lambda: app_state.detector),
-    settings: Settings = Depends(get_settings)
+    settings: Settings = Depends(get_settings),
 ) -> ModelInfo:
     """
     Retorna información sobre el modelo y configuración.

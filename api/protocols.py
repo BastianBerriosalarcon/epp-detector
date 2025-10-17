@@ -71,11 +71,7 @@ class DetectorProtocol(Protocol):
         """
         ...
 
-    def predict(
-        self,
-        image: Any,
-        return_format: str = "dict"
-    ) -> List[Dict[str, Any]]:
+    def predict(self, image: Any, return_format: str = "dict") -> List[Dict[str, Any]]:
         """Perform detection on a single image.
 
         Args:
@@ -91,11 +87,7 @@ class DetectorProtocol(Protocol):
         """
         ...
 
-    def predict_batch(
-        self,
-        images: List[Any],
-        batch_size: int = 8
-    ) -> List[List[Dict[str, Any]]]:
+    def predict_batch(self, images: List[Any], batch_size: int = 8) -> List[List[Dict[str, Any]]]:
         """Perform detection on multiple images in batches.
 
         Batching improves throughput by processing multiple images
@@ -169,12 +161,7 @@ class ImageValidatorProtocol(Protocol):
         """
         ...
 
-    def validate_dimensions(
-        self,
-        width: int,
-        height: int,
-        filename: str = None
-    ) -> None:
+    def validate_dimensions(self, width: int, height: int, filename: str = None) -> None:
         """Validate that image dimensions are acceptable.
 
         Args:
@@ -222,10 +209,7 @@ class ModelLoaderProtocol(Protocol):
         ...
 
     def load_with_retry(
-        self,
-        model_path: Path,
-        max_retries: int = 3,
-        retry_delay: float = 1.0
+        self, model_path: Path, max_retries: int = 3, retry_delay: float = 1.0
     ) -> Any:
         """Load model with retry logic for transient failures.
 

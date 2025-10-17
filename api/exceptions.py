@@ -157,7 +157,7 @@ class InvalidImageDimensionsError(InvalidImageError):
         height: int,
         min_dim: int = None,
         max_dim: int = None,
-        filename: str = None
+        filename: str = None,
     ) -> None:
         """Initialize with dimension information.
 

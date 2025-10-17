@@ -77,10 +77,11 @@ ENV PYTHONUNBUFFERED=1 \
 
 # Instalar solo runtime dependencies (mucho más ligero que builder)
 # libgomp1: OpenMP runtime (no headers)
-# libgl1-mesa-glx, libglib2.0-0: Para OpenCV headless
+# libgl1: OpenGL para OpenCV headless
+# libglib2.0-0: GLib runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean

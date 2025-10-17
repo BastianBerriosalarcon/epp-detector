@@ -257,7 +257,9 @@ def test_metrics_endpoint(client: TestClient):
     assert data["uptime_seconds"] >= 0
 
 
-def test_metrics_increment_after_prediction(client_with_mock_model: TestClient, sample_image_bytes: bytes):
+def test_metrics_increment_after_prediction(
+    client_with_mock_model: TestClient, sample_image_bytes: bytes
+):
     """
     Test de incremento de métricas después de predicción.
 
@@ -334,7 +336,9 @@ def test_info_endpoint_classes_structure(client: TestClient):
 
     classes_values = list(classes.values())
     for expected_class in expected_classes:
-        assert expected_class in classes_values, f"Clase esperada '{expected_class}' no encontrada en modelo"
+        assert (
+            expected_class in classes_values
+        ), f"Clase esperada '{expected_class}' no encontrada en modelo"
 
 
 # ============================================================================

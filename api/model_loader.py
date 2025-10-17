@@ -58,8 +58,7 @@ class ModelLoader:
         """
         if not model_path.exists():
             raise ModelLoadError(
-                model_path=str(model_path),
-                reason=f"Model file not found at {model_path}"
+                model_path=str(model_path), reason=f"Model file not found at {model_path}"
             )
 
         suffix = model_path.suffix.lower()
@@ -73,7 +72,7 @@ class ModelLoader:
             else:
                 raise ModelLoadError(
                     model_path=str(model_path),
-                    reason=f"Unsupported model format: {suffix}. Use .pt or .onnx"
+                    reason=f"Unsupported model format: {suffix}. Use .pt or .onnx",
                 )
 
         except ModelLoadError:
@@ -82,15 +81,11 @@ class ModelLoader:
         except Exception as e:
             logger.error(f"Unexpected error loading model: {e}", exc_info=True)
             raise ModelLoadError(
-                model_path=str(model_path),
-                reason=f"Unexpected error: {str(e)}"
+                model_path=str(model_path), reason=f"Unexpected error: {str(e)}"
             ) from e
 
     def load_with_retry(
-        self,
-        model_path: Path,
-        max_retries: int = 3,
-        retry_delay: float = 1.0
+        self, model_path: Path, max_retries: int = 3, retry_delay: float = 1.0
     ) -> Any:
         """Load model with retry logic for transient failures.
 
@@ -115,8 +110,7 @@ class ModelLoader:
         for attempt in range(1, max_retries + 1):
             try:
                 logger.info(
-                    f"Model loading attempt {attempt}/{max_retries} "
-                    f"for {model_path.name}"
+                    f"Model loading attempt {attempt}/{max_retries} " f"for {model_path.name}"
                 )
                 model = self.load_model(model_path)
                 logger.info(f"Model loaded successfully on attempt {attempt}")
@@ -124,9 +118,7 @@ class ModelLoader:
 
             except ModelLoadError as e:
                 last_error = e
-                logger.warning(
-                    f"Model loading attempt {attempt}/{max_retries} failed: {e.message}"
-                )
+                logger.warning(f"Model loading attempt {attempt}/{max_retries} failed: {e.message}")
 
                 if attempt < max_retries:
                     logger.info(f"Retrying in {retry_delay} seconds...")
@@ -139,7 +131,7 @@ class ModelLoader:
         # All retries exhausted
         raise ModelLoadError(
             model_path=str(model_path),
-            reason=f"Failed after {max_retries} attempts. Last error: {last_error.message}"
+            reason=f"Failed after {max_retries} attempts. Last error: {last_error.message}",
         ) from last_error
 
     def _load_pytorch_model(self, model_path: Path) -> Any:
@@ -165,10 +157,11 @@ class ModelLoader:
             # Optionally move to GPU
             if self.settings.enable_gpu:
                 import torch
+
                 if torch.cuda.is_available():
                     logger.info("Moving model to GPU (CUDA)")
                     # YOLOv8 handles device automatically via model.to()
-                    model.to('cuda')
+                    model.to("cuda")
                 else:
                     logger.warning("GPU requested but CUDA not available, using CPU")
 
@@ -178,12 +171,11 @@ class ModelLoader:
         except ImportError as e:
             raise ModelLoadError(
                 model_path=str(model_path),
-                reason="ultralytics package not installed. Run: pip install ultralytics"
+                reason="ultralytics package not installed. Run: pip install ultralytics",
             ) from e
         except Exception as e:
             raise ModelLoadError(
-                model_path=str(model_path),
-                reason=f"Failed to load PyTorch model: {str(e)}"
+                model_path=str(model_path), reason=f"Failed to load PyTorch model: {str(e)}"
             ) from e
 
     def _load_onnx_model(self, model_path: Path) -> Any:
@@ -207,21 +199,19 @@ class ModelLoader:
             logger.debug(f"Loading ONNX model from {model_path}")
 
             # Configure execution providers
-            providers = ['CPUExecutionProvider']
+            providers = ["CPUExecutionProvider"]
             if self.settings.enable_gpu:
                 import torch
+
                 if torch.cuda.is_available():
                     # Prefer CUDA over CPU
-                    providers.insert(0, 'CUDAExecutionProvider')
+                    providers.insert(0, "CUDAExecutionProvider")
                     logger.info("ONNX will use CUDA execution provider")
                 else:
                     logger.warning("GPU requested but CUDA not available, using CPU")
 
             # Create inference session
-            session = ort.InferenceSession(
-                str(model_path),
-                providers=providers
-            )
+            session = ort.InferenceSession(str(model_path), providers=providers)
 
             # Log session info
             logger.info(
@@ -233,8 +223,7 @@ class ModelLoader:
             input_info = session.get_inputs()[0]
             output_info = session.get_outputs()[0]
             logger.debug(
-                f"ONNX model expects input '{input_info.name}' "
-                f"with shape {input_info.shape}"
+                f"ONNX model expects input '{input_info.name}' " f"with shape {input_info.shape}"
             )
             logger.debug(
                 f"ONNX model produces output '{output_info.name}' "
@@ -246,12 +235,11 @@ class ModelLoader:
         except ImportError as e:
             raise ModelLoadError(
                 model_path=str(model_path),
-                reason="onnxruntime package not installed. Run: pip install onnxruntime or onnxruntime-gpu"
+                reason="onnxruntime package not installed. Run: pip install onnxruntime or onnxruntime-gpu",
             ) from e
         except Exception as e:
             raise ModelLoadError(
-                model_path=str(model_path),
-                reason=f"Failed to load ONNX model: {str(e)}"
+                model_path=str(model_path), reason=f"Failed to load ONNX model: {str(e)}"
             ) from e
 
 

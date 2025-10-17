@@ -57,11 +57,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             f"{self.max_requests} requests per {self.window_seconds}s"
         )
 
-    async def dispatch(
-        self,
-        request: Request,
-        call_next: Callable
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Process request with rate limiting.
 
         Args:
@@ -93,8 +89,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     "error": "Rate limit exceeded",
                     "max_requests": self.max_requests,
                     "window_seconds": self.window_seconds,
-                    "retry_after": self._get_retry_after(client_ip)
-                }
+                    "retry_after": self._get_retry_after(client_ip),
+                },
             )
 
         # Process request
@@ -200,11 +196,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         """
         super().__init__(app)
 
-    async def dispatch(
-        self,
-        request: Request,
-        call_next: Callable
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Process request with logging.
 
         Args:
@@ -231,8 +223,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
             # Log successful request
             logger.info(
-                f"{method} {path} - {response.status_code} - "
-                f"{process_time:.2f}ms - {client_ip}"
+                f"{method} {path} - {response.status_code} - " f"{process_time:.2f}ms - {client_ip}"
             )
 
             # Add timing header
@@ -246,8 +237,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
             # Log failed request
             logger.error(
-                f"{method} {path} - ERROR - "
-                f"{process_time:.2f}ms - {client_ip} - {str(e)}"
+                f"{method} {path} - ERROR - " f"{process_time:.2f}ms - {client_ip} - {str(e)}"
             )
 
             # Re-raise exception
