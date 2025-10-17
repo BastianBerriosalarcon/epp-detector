@@ -1,0 +1,180 @@
+# =============================================================================
+# Requirements para Construcción de Dataset - EPP Detector
+# =============================================================================
+# Este archivo contiene todas las dependencias necesarias para ejecutar
+# los scripts de construcción de dataset personalizado (scripts/collect_images.py,
+# scripts/annotate_dataset.py, etc.)
+#
+# Instalación:
+#   pip install -r requirements-dataset.txt
+#
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Procesamiento de Imágenes y Video
+# -----------------------------------------------------------------------------
+
+# OpenCV - Procesamiento de video, extracción de frames, manipulación de imágenes
+opencv-python>=4.8.0
+
+# Pillow - Manipulación de imágenes, carga/guardado en múltiples formatos
+Pillow>=10.0.0
+
+# ImageHash - Detección de duplicados mediante hashing perceptual
+ImageHash>=4.3.1
+
+# -----------------------------------------------------------------------------
+# Aumento de Datos (Data Augmentation)
+# -----------------------------------------------------------------------------
+
+# Albumentations - Augmentations específicos para detección de objetos
+# Incluye transformaciones que preservan bounding boxes correctamente
+albumentations>=1.3.1
+
+# imgaug - Librería alternativa de augmentation (opcional, backup)
+# imgaug>=0.4.0
+
+# -----------------------------------------------------------------------------
+# Herramientas de Anotación
+# -----------------------------------------------------------------------------
+
+# LabelImg - Herramienta GUI para anotación de bounding boxes en formato YOLO
+labelImg>=1.8.6
+
+# PyYAML - Lectura/escritura de archivos de configuración YAML
+PyYAML>=6.0.1
+
+# -----------------------------------------------------------------------------
+# Visualización y Estadísticas
+# -----------------------------------------------------------------------------
+
+# Matplotlib - Generación de gráficos y visualizaciones
+matplotlib>=3.7.0
+
+# Seaborn - Visualizaciones estadísticas de alto nivel
+seaborn>=0.12.0
+
+# -----------------------------------------------------------------------------
+# Utilidades Generales
+# -----------------------------------------------------------------------------
+
+# NumPy - Operaciones numéricas, manipulación de arrays
+numpy>=1.24.0
+
+# tqdm - Barras de progreso para operaciones largas
+tqdm>=4.66.0
+
+# -----------------------------------------------------------------------------
+# API de CVAT (Opcional - Solo si usas CVAT)
+# -----------------------------------------------------------------------------
+# Descomenta las siguientes líneas si planeas usar CVAT como herramienta de anotación
+
+# cvat-sdk>=2.5.0                 # SDK de Python para CVAT
+# requests>=2.31.0                # Para requests HTTP a API de CVAT
+
+# -----------------------------------------------------------------------------
+# Procesamiento Paralelo (Opcional pero Recomendado)
+# -----------------------------------------------------------------------------
+
+# joblib - Paralelización de tareas de procesamiento
+joblib>=1.3.0
+
+# -----------------------------------------------------------------------------
+# Descarga de Datasets desde Roboflow
+# -----------------------------------------------------------------------------
+
+# Roboflow - API para descargar datasets de Roboflow Universe
+roboflow>=1.1.0
+
+# python-dotenv - Cargar variables de entorno desde archivo .env
+python-dotenv>=1.0.0
+
+# -----------------------------------------------------------------------------
+# Detección de Blur y Calidad de Imagen (Opcional)
+# -----------------------------------------------------------------------------
+
+# scikit-image - Algoritmos adicionales de procesamiento de imágenes
+scikit-image>=0.21.0
+
+# -----------------------------------------------------------------------------
+# Machine Learning (Para Active Learning Sampler)
+# -----------------------------------------------------------------------------
+# Descomenta si planeas usar active_learning_sampler.py con modelo pre-entrenado
+
+# ultralytics>=8.0.0              # YOLOv8 para active learning
+# torch>=2.0.0                    # PyTorch (requerido por ultralytics)
+# torchvision>=0.15.0             # TorchVision (requerido por ultralytics)
+
+# -----------------------------------------------------------------------------
+# Notas de Instalación
+# -----------------------------------------------------------------------------
+#
+# 1. Python requerido: >= 3.10
+#
+# 2. Para GPU (opcional pero recomendado para augmentation rápido):
+#    - Instalar PyTorch con soporte CUDA desde https://pytorch.org
+#    - Ejemplo: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+#
+# 3. Instalación de LabelImg en Ubuntu/Linux:
+#    - Si hay problemas con PyQt5, instalar: sudo apt-get install python3-pyqt5
+#
+# 4. Para Mac con Apple Silicon:
+#    - opencv-python puede requerir compilación desde fuente
+#    - Alternativa: usar opencv-python-headless
+#
+# 5. Verificar instalación:
+#    python -c "import cv2; import albumentations; import imagehash; print('OK')"
+#
+# =============================================================================
+# Dependencias por Script
+# =============================================================================
+#
+# download_roboflow.py:
+#   - roboflow, python-dotenv, PyYAML (implícito en dataset)
+#
+# collect_images.py:
+#   - opencv-python, Pillow, ImageHash, numpy, tqdm, PyYAML
+#
+# annotate_dataset.py:
+#   - labelImg, PyYAML
+#
+# validate_dataset.py:
+#   - numpy, tqdm, PyYAML
+#
+# augment_dataset.py:
+#   - albumentations, opencv-python, numpy, tqdm, PyYAML
+#
+# dataset_stats.py:
+#   - matplotlib, seaborn, numpy, opencv-python, tqdm
+#
+# prepare_dataset.py:
+#   - opencv-python, numpy, PyYAML
+#
+# build_dataset_pipeline.py:
+#   - PyYAML (+ dependencies de todos los scripts anteriores)
+#
+# active_learning_sampler.py (opcional):
+#   - ultralytics, torch, numpy
+#
+# setup_cvat_project.py (opcional):
+#   - cvat-sdk, requests, PyYAML
+#
+# =============================================================================
+# Troubleshooting
+# =============================================================================
+#
+# Problema: ImportError con cv2
+# Solución: pip uninstall opencv-python opencv-contrib-python
+#           pip install opencv-python
+#
+# Problema: LabelImg no abre ventana
+# Solución: sudo apt-get install python3-pyqt5 (Linux)
+#           brew install qt5 (Mac)
+#
+# Problema: Albumentations muy lento
+# Solución: Instalar albumentations con OpenCV compilado con optimizaciones
+#
+# Problema: Out of memory durante augmentation
+# Solución: Reducir batch_size en config, procesar en chunks más pequeños
+#
+# =============================================================================

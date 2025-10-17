@@ -7,11 +7,18 @@
 
 ## Objetivo
 
-Sistema de detección automática de Equipos de Protección Personal (EPP) mediante visión por computadora, diseñado específicamente para la industria minera chilena. El sistema identifica en tiempo real el uso correcto de:
+Sistema de detección automática de Equipos de Protección Personal (EPP) mediante visión por computadora, diseñado específicamente para la industria minera chilena. El sistema identifica en tiempo real:
 
-- **Casco de seguridad** (hardhat detection)
-- **Detección de violaciones** (personas sin casco)
-- **Personas** (para análisis de cumplimiento)
+**EPP Obligatorio (DS 132):**
+- **Casco de seguridad** (Hardhat)
+- **Chaleco reflectante** (Safety Vest)
+
+**Violaciones Críticas:**
+- **Sin casco** (NO-Hardhat)
+- **Sin chaleco** (NO-Safety Vest)
+
+**Contexto Adicional:**
+- Personas, maquinaria, vehículos, conos de seguridad
 
 **Problema:** Los accidentes laborales en minería chilena representan el 8.5% del total nacional (SUSESO 2023). El uso incorrecto o ausencia de EPP es una de las principales causas de lesiones graves y fatalidades. La supervisión manual es inconsistente y costosa.
 
@@ -68,8 +75,9 @@ Input (Imagen) → Validación → YOLOv8 (ONNX/PyTorch) → Post-processing →
 | **Arquitectura** | Completo | SOLID, DI, protocols, excepciones |
 | **Configuración** | Completo | Pydantic Settings, 50+ parámetros |
 | **Validación** | Completo | Imágenes, formatos, dimensiones |
-| **Modelo YOLOv8** | Pendiente | Implementación de inferencia |
-| **Entrenamiento** | Pendiente | Scripts y pipelines |
+| **Dataset Base** | Completo | 2,799 imágenes (10 clases) descargadas |
+| **Modelo YOLOv8** | En Progreso | Listo para entrenamiento |
+| **Entrenamiento** | Pendiente | Entrenar con dataset Roboflow |
 | **Dataset Chile** | Pendiente | Recolección y anotación |
 
 **Objetivos de Performance:**
@@ -180,21 +188,32 @@ make docker-logs
 
 ## Datasets
 
-### 1. Dataset Base (Roboflow)
-- **Fuente**: [Construction Safety Dataset](https://universe.roboflow.com/roboflow-universe-projects/construction-site-safety)
-- **Clases**: Hardhat, Safety Vest, NO-Hardhat, NO-Safety Vest, Person
-- **Imágenes**: ~5,000 anotadas (YOLO format)
+### 1. Dataset Base (Roboflow) - DESCARGADO
+- **Fuente**: [Construction Site Safety v27](https://universe.roboflow.com/roboflow-universe-projects/construction-site-safety/dataset/27)
+- **Estado**: Descargado y configurado
+- **Total**: 2,799 imágenes anotadas (YOLO format)
+  - Training: 2,603 imágenes (93%)
+  - Validation: 114 imágenes (4%)
+  - Test: 82 imágenes (3%)
+- **Anotaciones**: 34,780 objetos etiquetados
+- **Clases (10)**:
+  - **EPP**: Hardhat, Safety Vest
+  - **Violaciones**: NO-Hardhat, NO-Safety Vest
+  - **Contexto**: Person, Safety Cone, machinery, vehicle
+  - **Otros**: Mask, NO-Mask (no relevantes para DS 132)
 
-### 2. Dataset Chile (Propio)
+Ver documentación completa en [data/README.md](data/README.md).
+
+### 2. Dataset Chile (Propio) - PENDIENTE
 - **Fuente**: Imágenes de faenas mineras chilenas (colaboración empresas)
-- **Objetivo**: 1,000+ imágenes adicionales
+- **Objetivo**: 1,000+ imágenes adicionales para fine-tuning
 - **Clases específicas**:
   - Casco amarillo/blanco (estándar minería)
   - Chaleco naranja reflectante
   - Zapatos de seguridad (visible en planos medios)
 - **Condiciones**: Subterránea, rajo abierto, diferentes iluminaciones
 
-**Pendiente**: Recolección y anotación de datos locales
+Ver guías de recolección en [docs/DATASET_PERSONALIZADO.md](docs/DATASET_PERSONALIZADO.md).
 
 ---
 
@@ -224,13 +243,14 @@ make docker-logs
 - [ ] Tests de integración con modelo real
 - [ ] Optimización de performance (warmup, batch)
 
-### Fase 3: Entrenamiento
-- [ ] Pipeline de descarga de dataset (Roboflow)
-- [ ] Scripts de entrenamiento con configuración
+### Fase 3: Entrenamiento - EN PROGRESO
+- [x] Pipeline de descarga de dataset (Roboflow)
+- [x] Dataset descargado: 2,799 imágenes con 10 clases
+- [ ] Entrenar modelo YOLOv8 con dataset completo
 - [ ] Integración con MLflow para tracking
 - [ ] Validación y métricas (mAP, precision, recall)
 - [ ] Export a ONNX para producción
-- [ ] Entrenamiento en GCP con GPU
+- [ ] Optimización de hiperparámetros
 
 ### Fase 4: Dataset Chileno
 - [ ] Recolección de imágenes de faenas mineras

@@ -7,13 +7,13 @@ permitiendo fácil ajuste de parámetros sin modificar código.
 
 import os
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Union
 
 try:
     from pydantic_settings import BaseSettings
-    from pydantic import Field
+    from pydantic import Field, field_validator
 except ImportError:
-    from pydantic import BaseSettings, Field
+    from pydantic import BaseSettings, Field, validator as field_validator
 
 
 class Settings(BaseSettings):
@@ -224,11 +224,30 @@ class Settings(BaseSettings):
         description="Habilitar CORS para frontend",
     )
 
-    cors_origins: List[str] = Field(
-        default=["*"],
-        env="CORS_ORIGINS",
-        description="Orígenes permitidos para CORS",
+    cors_origins: Union[str, List[str]] = Field(
+        default="*",
+        description="Orígenes permitidos para CORS (string o lista)",
     )
+
+    @field_validator("cors_origins", mode="after")
+    @classmethod
+    def parse_cors_origins(cls, v):
+        """Parse CORS origins to list format for middleware.
+
+        Handles formats from environment variables:
+        - "*" -> ["*"]
+        - "http://localhost:3000" -> ["http://localhost:3000"]
+        - "http://localhost:3000,http://localhost:8080" -> ["http://localhost:3000", "http://localhost:8080"]
+        """
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            if v == "*" or v.strip() == "*":
+                return ["*"]
+            if "," in v:
+                return [origin.strip() for origin in v.split(",") if origin.strip()]
+            return [v.strip()] if v.strip() else ["*"]
+        return ["*"]  # Fallback default
 
     enable_api_key: bool = Field(
         default=False,
@@ -270,6 +289,8 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        # Allow extra fields in .env that aren't in the model (for flexibility)
+        extra = "ignore"
 
     def get_model_path_absolute(self) -> Path:
         """

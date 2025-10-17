@@ -108,7 +108,8 @@ make ci                # Ejecutar pipeline CI completo localmente
 **CRÍTICO**: El proyecto usa una arquitectura bilingüe para balancear requisitos técnicos con UX chilena:
 
 1. **Capa del Modelo (Inglés)**: YOLOv8 entrenado con dataset Roboflow usa nombres de clase en inglés
-   - Clases: `hardhat`, `head`, `person`
+   - **Dataset descargado**: Construction Site Safety v27 (2,799 imágenes)
+   - **10 clases**: hardhat, mask, no_hardhat, no_mask, no_safety_vest, person, safety_cone, safety_vest, machinery, vehicle
    - Ubicación: `api/__init__.py` → `EPP_CLASSES`
 
 2. **Capa de Traducción (Español)**: Respuestas de API incluyen traducciones al español para usuarios finales
@@ -127,7 +128,11 @@ make ci                # Ejecutar pipeline CI completo localmente
 }
 ```
 
-Ver `CAMBIOS_TRADUCCION.md` para explicación detallada.
+**Clases Relevantes para DS 132**:
+- EPP Obligatorio: hardhat (0), safety_vest (7)
+- Violaciones: no_hardhat (2), no_safety_vest (4)
+- Contexto: person (5), machinery (8), vehicle (9), safety_cone (6)
+- No relevantes: mask (1), no_mask (3) - específicas de COVID
 
 ### Organización del Código
 
@@ -162,10 +167,10 @@ Toda la configuración está centralizada en `api/config.py` usando Pydantic `Ba
 
 **No hardcodear valores de configuración**. Usar `settings` en su lugar:
 ```python
-# ❌ Mal
+# Mal
 confidence = 0.5
 
-# ✅ Bien
+# Bien
 from api.config import settings
 confidence = settings.confidence_threshold
 ```
@@ -253,11 +258,15 @@ Este proyecto está diseñado para la industria minera chilena con requisitos es
 - Ver `docs/chile_context.md` para contexto regulatorio completo
 
 ### Estrategia de Dataset
-1. **Base**: Dataset Roboflow "Hard Hat Workers" (~5K imágenes, internacional)
-2. **Fine-tuning**: Imágenes de minería chilena (objetivo: 1K+ imágenes)
+1. **Base**: Dataset Roboflow "Construction Site Safety v27" - **DESCARGADO**
+   - 2,799 imágenes (93% train, 4% val, 3% test)
+   - 34,780 anotaciones en formato YOLO
+   - 10 clases (ver detalle en `data/README.md`)
+2. **Estado actual**: Listo para entrenar modelo YOLOv8
+3. **Fine-tuning futuro**: Imágenes de minería chilena (objetivo: 1K+ imágenes)
    - Condiciones específicas: Minas subterráneas, rajo abierto, iluminación desértica
    - Marcas/colores de EPP chilenos (cascos amarillos, chalecos naranjos)
-3. **Approach de transfer learning documentado en `docs/chile_context.md`**
+4. **Approach de transfer learning documentado en `docs/chile_context.md`**
 
 ### Localización
 - **UI/Respuestas de API**: Español (ver patrón bilingüe arriba)

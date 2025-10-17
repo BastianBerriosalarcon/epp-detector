@@ -239,7 +239,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## 🐳 Docker Build Test Passed
+              body: `## [DOCKER] Docker Build Test Passed
 
               **Image tags:**
               \`\`\`
@@ -248,7 +248,7 @@ jobs:
 
               **Build digest:** \`${{ steps.build-and-push.outputs.digest }}\`
 
-              ✅ Dockerfile is valid and builds successfully.
+              [OK] Dockerfile is valid and builds successfully.
               `
             })
 

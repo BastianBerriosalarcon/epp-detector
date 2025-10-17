@@ -1,0 +1,483 @@
+# =============================================================================
+# Configuración de Dataset para EPP Detector - Minería Chilena
+# =============================================================================
+# Este archivo centraliza todos los parámetros para la construcción del dataset
+# personalizado de detección de EPP en contexto minero chileno.
+#
+# Uso: Este archivo es leído por los scripts en scripts/ para configurar
+# los parámetros de recolección, anotación, validación y aumento de datos.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Rutas de Directorios (Paths)
+# -----------------------------------------------------------------------------
+paths:
+  # Directorio raíz del proyecto
+  project_root: "."
+
+  # Datos sin procesar (raw data)
+  raw_videos: "data/raw/videos"
+  raw_images: "data/raw/images"
+
+  # Imágenes filtradas por calidad
+  filtered_images: "data/filtered/images"
+
+  # Dataset anotado
+  annotations_dir: "data/annotations"
+  annotations_images: "data/annotations/images"
+  annotations_labels: "data/annotations/labels"
+
+  # Dataset aumentado (augmented)
+  augmented_dir: "data/augmented"
+  augmented_images: "data/augmented/images"
+  augmented_labels: "data/augmented/labels"
+
+  # Dataset final (train/val/test splits)
+  final_dir: "data/final"
+  final_images: "data/final/images"
+  final_labels: "data/final/labels"
+
+  # Reportes y resultados
+  reports_dir: "results"
+  statistics_report: "results/dataset_statistics.html"
+  validation_report: "results/validation_report.html"
+  quality_report: "results/quality_report.json"
+
+# -----------------------------------------------------------------------------
+# Clases de Detección (Detection Classes)
+# -----------------------------------------------------------------------------
+classes:
+  # Mapeo de ID de clase a nombre (en inglés - usado por el modelo)
+  names:
+    0: "hardhat"          # Casco de seguridad
+    1: "safety_vest"      # Chaleco reflectante
+    2: "no_hardhat"       # Cabeza sin casco (violación)
+    3: "no_safety_vest"   # Torso sin chaleco (violación)
+    4: "person"           # Persona completa
+
+  # Traducciones al español (para reportes y UI)
+  names_es:
+    0: "Casco de seguridad"
+    1: "Chaleco reflectante"
+    2: "Sin casco"
+    3: "Sin chaleco"
+    4: "Persona"
+
+  # Colores para visualización (RGB)
+  colors:
+    0: [255, 255, 0]      # Amarillo - hardhat
+    1: [255, 165, 0]      # Naranja - safety_vest
+    2: [255, 0, 0]        # Rojo - no_hardhat (violación)
+    3: [255, 120, 120]    # Rojo claro - no_safety_vest (violación)
+    4: [0, 255, 0]        # Verde - person
+
+# -----------------------------------------------------------------------------
+# Parámetros de Recolección de Imágenes (Image Collection)
+# -----------------------------------------------------------------------------
+collection:
+  # Extracción de frames desde videos
+  video_extraction:
+    fps: 0.33                    # Frames por segundo (0.33 = 1 frame cada 3 seg)
+    skip_similar: true           # Saltar frames muy similares (detección de cambio)
+    similarity_threshold: 0.95   # Umbral de similitud (0-1, mayor = más estricto)
+    min_scene_change: 0.1        # Cambio mínimo de escena para extraer frame
+
+  # Filtrado de calidad de imágenes
+  quality_filters:
+    # Detección de blur (desenfoque)
+    enable_blur_detection: true
+    min_blur_score: 100          # Puntaje Laplaciano mínimo (>100 = aceptable)
+
+    # Filtrado por brillo
+    enable_brightness_filter: true
+    min_brightness: 30           # Valor mínimo de brillo promedio (0-255)
+    max_brightness: 225          # Valor máximo de brillo promedio
+
+    # Filtrado por contraste
+    enable_contrast_filter: true
+    min_contrast: 20             # Desviación estándar mínima
+
+    # Detección de duplicados
+    enable_duplicate_detection: true
+    duplicate_hash_size: 16      # Tamaño de hash perceptual (8, 16, 32)
+    duplicate_threshold: 5       # Distancia Hamming máxima para duplicados
+
+  # Restricciones de resolución
+  resolution:
+    min_width: 640               # Ancho mínimo en píxeles
+    min_height: 480              # Alto mínimo en píxeles
+    max_width: 4096              # Ancho máximo (4K)
+    max_height: 4096             # Alto máximo
+
+  # Organización de archivos
+  organization:
+    by_date: true                # Organizar en subdirectorios por fecha
+    by_camera: false             # Organizar por ID de cámara (si está disponible)
+    naming_pattern: "img_{timestamp}_{counter:05d}.jpg"
+
+# -----------------------------------------------------------------------------
+# Parámetros de Anotación (Annotation)
+# -----------------------------------------------------------------------------
+annotation:
+  # Herramienta preferida (labelimg, cvat, label_studio)
+  tool: "labelimg"
+
+  # Configuración de LabelImg
+  labelimg:
+    auto_save: true              # Guardar automáticamente al cambiar de imagen
+    predefined_classes_file: "configs/classes.txt"
+
+  # Configuración de CVAT
+  cvat:
+    server_url: "http://localhost:8080"
+    project_name: "EPP Minería Chile"
+    task_size: 100               # Imágenes por tarea
+    overlap: 0                   # Overlap entre tareas (para videos)
+    segment_size: 1              # Tamaño de segmento (1 = imágenes individuales)
+    image_quality: 95            # Calidad de compresión para upload
+
+  # Reglas de anotación
+  rules:
+    min_box_size: 10             # Tamaño mínimo de bounding box (píxeles)
+    max_box_size_ratio: 0.9     # Ratio máximo de box respecto a imagen
+    min_visibility: 0.5          # Visibilidad mínima para anotar (0-1)
+    allow_truncated: true        # Permitir boxes truncados en borde de imagen
+
+# -----------------------------------------------------------------------------
+# Parámetros de Validación (Validation)
+# -----------------------------------------------------------------------------
+validation:
+  # Validación de formato
+  format_checks:
+    check_coordinates: true      # Validar rango de coordenadas (0-1)
+    check_class_ids: true        # Validar que IDs de clase existan
+    check_file_pairing: true     # Validar que cada imagen tenga .txt
+
+  # Validación de geometría
+  geometry_checks:
+    min_box_width: 0.01          # Ancho mínimo normalizado (1% de imagen)
+    min_box_height: 0.01         # Alto mínimo normalizado
+    max_box_width: 0.95          # Ancho máximo normalizado
+    max_box_height: 0.95         # Alto máximo normalizado
+    check_aspect_ratio: true     # Validar aspect ratio razonable
+    min_aspect_ratio: 0.2        # Ratio mínimo (ancho/alto)
+    max_aspect_ratio: 5.0        # Ratio máximo
+
+  # Validación de consistencia
+  consistency_checks:
+    check_class_cooccurrence: true  # Validar co-ocurrencia lógica de clases
+    # Ej: no_hardhat y hardhat no deben aparecer juntos para misma persona
+
+    check_overlaps: true         # Detectar overlaps sospechosos
+    max_overlap_iou: 0.9         # IoU máximo entre boxes de misma clase
+
+  # Métricas de calidad
+  quality_metrics:
+    report_class_distribution: true
+    report_box_statistics: true
+    report_missing_annotations: true
+
+    # Alertas de desbalance
+    warn_class_imbalance: true
+    min_class_ratio: 0.05        # Ratio mínimo de clase (5%)
+
+# -----------------------------------------------------------------------------
+# Parámetros de Aumento de Datos (Data Augmentation)
+# -----------------------------------------------------------------------------
+augmentation:
+  # Factor de aumento (cuántas imágenes aumentadas por imagen original)
+  augmentation_factor: 3
+
+  # Probabilidad de aplicar cada transformación (0-1)
+  # Transformaciones específicas para minería
+  transforms:
+    # Transformaciones fotométricas (color, brillo)
+    photometric:
+      # Variaciones de iluminación (simula subterráneo vs superficie)
+      random_brightness_contrast:
+        enable: true
+        probability: 0.7
+        brightness_limit: 0.3    # ±30% brillo
+        contrast_limit: 0.3      # ±30% contraste
+
+      # Ajuste de tono/saturación (simula diferentes condiciones de luz)
+      hue_saturation_value:
+        enable: true
+        probability: 0.5
+        hue_shift_limit: 20
+        sat_shift_limit: 30
+        val_shift_limit: 20
+
+      # Simulación de polvo/niebla (común en minería)
+      fog:
+        enable: true
+        probability: 0.3
+        fog_coef_lower: 0.1
+        fog_coef_upper: 0.4
+        alpha_coef: 0.1
+
+      # Blur de movimiento (trabajadores en movimiento)
+      motion_blur:
+        enable: true
+        probability: 0.2
+        blur_limit: 7
+
+      # Ruido gaussiano (cámaras de baja calidad)
+      gaussian_noise:
+        enable: true
+        probability: 0.2
+        var_limit: [10, 50]
+
+    # Transformaciones geométricas
+    geometric:
+      # Rotación leve (ángulos de cámara)
+      rotate:
+        enable: true
+        probability: 0.5
+        limit: 15                # ±15 grados
+
+      # Flip horizontal (espejo)
+      horizontal_flip:
+        enable: true
+        probability: 0.5
+
+      # NO flip vertical (no es realista para personas)
+      vertical_flip:
+        enable: false
+
+      # Escalado y crop (simula diferentes distancias)
+      shift_scale_rotate:
+        enable: true
+        probability: 0.5
+        shift_limit: 0.1
+        scale_limit: 0.2
+        rotate_limit: 10
+
+      # Distorsión de perspectiva (ángulos de cámara)
+      perspective:
+        enable: true
+        probability: 0.3
+        scale: 0.05
+
+    # Transformaciones de oclusión
+    occlusion:
+      # Coarse dropout (simula oclusiones por objetos)
+      coarse_dropout:
+        enable: true
+        probability: 0.2
+        max_holes: 3
+        max_height: 32
+        max_width: 32
+        min_holes: 1
+        min_height: 8
+        min_width: 8
+
+      # Grid dropout (simula interferencia)
+      grid_dropout:
+        enable: false            # Deshabilitado por defecto
+        probability: 0.1
+
+  # Estrategias de sobremuestreo para clases minoritarias
+  oversampling:
+    enable: true
+    # Clases de violación son raras - aumentar más
+    class_weights:
+      0: 1.0                     # hardhat - frecuencia normal
+      1: 1.0                     # safety_vest - frecuencia normal
+      2: 3.0                     # no_hardhat - aumentar 3x (violación rara)
+      3: 3.0                     # no_safety_vest - aumentar 3x (violación rara)
+      4: 1.0                     # person - frecuencia normal
+
+  # Preservación de anotaciones
+  bbox_params:
+    format: "yolo"               # Formato de bounding boxes
+    min_area: 100                # Área mínima después de transformación
+    min_visibility: 0.3          # Visibilidad mínima después de transformación
+    label_fields: ["class_labels"]
+
+# -----------------------------------------------------------------------------
+# Divisiones de Dataset (Train/Val/Test Splits)
+# -----------------------------------------------------------------------------
+splits:
+  # Ratios de división (deben sumar 1.0)
+  train: 0.70                    # 70% para entrenamiento
+  val: 0.20                      # 20% para validación
+  test: 0.10                     # 10% para testing
+
+  # Seed para reproducibilidad
+  random_seed: 42
+
+  # Estratificación por clase (mantener distribución en cada split)
+  stratify: true
+
+  # Shuffle antes de dividir
+  shuffle: true
+
+# -----------------------------------------------------------------------------
+# Aprendizaje Activo (Active Learning)
+# -----------------------------------------------------------------------------
+active_learning:
+  # Habilitar selección inteligente de imágenes para anotar
+  enable: true
+
+  # Modelo parcialmente entrenado para identificar casos difíciles
+  model_checkpoint: "models/yolov8n_epp_partial.pt"
+
+  # Estrategia de selección
+  strategy: "uncertainty"        # uncertainty, diversity, hybrid
+
+  # Umbrales
+  low_confidence_threshold: 0.5  # Detecciones con confianza < 0.5
+  high_confidence_threshold: 0.9 # Detecciones con confianza > 0.9
+
+  # Número de imágenes a priorizar
+  num_priority_images: 100
+
+  # Criterios de priorización
+  criteria:
+    low_confidence_detections: 0.4    # Peso: imágenes con baja confianza
+    no_detections: 0.3                # Peso: imágenes sin detecciones
+    high_density: 0.2                 # Peso: imágenes con muchas personas
+    diverse_scenes: 0.1               # Peso: escenas visualmente diversas
+
+# -----------------------------------------------------------------------------
+# Generación de Estadísticas y Reportes (Statistics & Reports)
+# -----------------------------------------------------------------------------
+statistics:
+  # Métricas a calcular
+  metrics:
+    - "total_images"
+    - "total_annotations"
+    - "class_distribution"
+    - "bbox_size_distribution"
+    - "aspect_ratio_distribution"
+    - "class_cooccurrence_matrix"
+    - "spatial_distribution"
+    - "images_per_class"
+
+  # Visualizaciones a generar
+  visualizations:
+    - "class_distribution_pie"
+    - "bbox_size_histogram"
+    - "aspect_ratio_histogram"
+    - "spatial_heatmap"
+    - "sample_images_grid"
+    - "annotation_density_plot"
+
+  # Número de imágenes de ejemplo por clase
+  num_examples_per_class: 5
+
+  # Formato de reporte
+  report_format: "html"          # html, markdown, json
+  include_interactive_charts: true
+
+# -----------------------------------------------------------------------------
+# Configuración de Logging
+# -----------------------------------------------------------------------------
+logging:
+  level: "INFO"                  # DEBUG, INFO, WARNING, ERROR
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  log_to_file: true
+  log_file: "logs/dataset_construction.log"
+
+  # Logs en español
+  use_spanish: true
+
+# -----------------------------------------------------------------------------
+# Configuración de Procesamiento Paralelo
+# -----------------------------------------------------------------------------
+processing:
+  # Número de workers para procesamiento paralelo
+  num_workers: 4                 # -1 para usar todos los cores disponibles
+
+  # Batch size para procesamiento
+  batch_size: 32
+
+  # Mostrar barra de progreso
+  show_progress: true
+
+# -----------------------------------------------------------------------------
+# Configuración de Validación de Integridad (Integrity Checks)
+# -----------------------------------------------------------------------------
+integrity:
+  # Verificar checksums de archivos
+  enable_checksums: false        # Útil para datasets grandes
+
+  # Verificar que imágenes no estén corruptas
+  verify_images: true
+
+  # Verificar encoding de archivos de texto
+  verify_encoding: true
+  expected_encoding: "utf-8"
+
+# -----------------------------------------------------------------------------
+# Metadatos del Dataset (Dataset Metadata)
+# -----------------------------------------------------------------------------
+metadata:
+  name: "EPP Mining Chile Dataset"
+  description: "Dataset personalizado para detección de EPP en operaciones mineras chilenas"
+  version: "1.0.0"
+  created_date: "2025-10-16"
+  authors:
+    - "Equipo EPP Detector"
+  license: "Propietario - Uso interno"
+
+  # Contexto específico
+  context:
+    industry: "Minería"
+    country: "Chile"
+    regulation: "DS 132"
+    ppe_types:
+      - "Casco de seguridad"
+      - "Chaleco reflectante"
+      - "Detección de violaciones (sin casco, sin chaleco)"
+
+  # Estadísticas (se actualizan automáticamente)
+  statistics:
+    total_images: null           # Será calculado
+    total_annotations: null
+    date_collected: null
+
+# -----------------------------------------------------------------------------
+# Configuración de Exportación (Export Configuration)
+# -----------------------------------------------------------------------------
+export:
+  # Formatos de exportación soportados
+  formats:
+    - "yolo"                     # Formato nativo para YOLOv8
+    - "coco"                     # Common Objects in Context
+    - "pascal_voc"               # PASCAL VOC XML
+
+  # Configuración por formato
+  yolo:
+    create_yaml: true            # Crear epp_dataset.yaml
+    include_class_names: true
+    normalize_coordinates: true
+
+  coco:
+    include_metadata: true
+    image_licensing: "proprietary"
+
+  # Compresión de dataset final
+  create_archive: true
+  archive_format: "zip"          # zip, tar.gz
+  archive_name: "epp_mining_chile_dataset_v1.zip"
+
+# =============================================================================
+# NOTAS DE CONFIGURACIÓN
+# =============================================================================
+#
+# 1. Paths relativos: Todos los paths son relativos al directorio raíz del proyecto
+#    Ejemplo: "data/raw/images" se resuelve a /path/to/epp-detector/data/raw/images
+#
+# 2. Modificar valores: Ajustar según necesidades específicas de cada operación minera
+#    Ejemplo: Aumentar augmentation_factor para datasets pequeños
+#
+# 3. Validación: Este archivo es validado al cargar - errores se reportarán claramente
+#
+# 4. Extensibilidad: Agregar nuevos parámetros sin romper scripts existentes
+#    Los scripts usan .get() con valores por defecto
+#
+# 5. Versionado: Mantener este archivo en control de versiones junto con el código
+#
+# =============================================================================

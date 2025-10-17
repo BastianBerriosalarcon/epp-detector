@@ -57,6 +57,8 @@ venv.bak/
 data/raw/
 data/processed/
 data/external/
+data/roboflow/
+runs/
 *.csv
 *.parquet
 *.feather

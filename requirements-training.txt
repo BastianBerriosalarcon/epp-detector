@@ -1,0 +1,174 @@
+# Dependencias de Entrenamiento para EPP Detector
+# Pipeline de Entrenamiento YOLOv8
+#
+# Instalar con: pip install -r requirements-training.txt
+#
+# Este archivo contiene dependencias SOLO para entrenamiento (directorio scripts/).
+# Para dependencias de inferencia de la API, ver requirements.txt
+
+# ============================================================================
+# Frameworks Core de ML/DL
+# ============================================================================
+
+# PyTorch - Framework de deep learning
+# NOTA: Instalar primero con CUDA. Ver https://pytorch.org/get-started/locally/
+# Para GPU: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Ultralytics YOLOv8 - Framework de detección de objetos
+# Incluye arquitectura YOLOv8 optimizada para detección en tiempo real
+ultralytics>=8.0.0
+
+# ============================================================================
+# Exportación y Runtime ONNX
+# ============================================================================
+
+# ONNX - Formato de intercambio de redes neuronales
+# Permite deployment cross-platform del modelo entrenado
+onnx>=1.14.0
+
+# ONNX Runtime - Inferencia optimizada en CPU/GPU
+onnxruntime>=1.15.0  # CPU inference
+# onnxruntime-gpu>=1.15.0  # Descomentar para inferencia en GPU
+
+# ONNX Simplifier - Simplifica el grafo ONNX para mejor performance
+onnxsim>=0.4.0
+
+# ============================================================================
+# Computer Vision
+# ============================================================================
+
+# OpenCV - Procesamiento de imágenes
+# Usado para lectura, escritura y preprocesamiento de imágenes
+opencv-python>=4.8.0
+
+# PIL/Pillow - Carga de imágenes
+# Alternativa a OpenCV para operaciones básicas de imagen
+Pillow>=10.0.0
+
+# Albumentations - Data augmentation avanzada
+# Proporciona transformaciones específicas para computer vision
+albumentations>=1.3.0
+
+# ============================================================================
+# Procesamiento de Datos
+# ============================================================================
+
+# NumPy - Computación numérica
+# Operaciones matriciales y vectoriales para procesamiento eficiente
+numpy>=1.24.0
+
+# Pandas - Manipulación de datos
+# Análisis de métricas y estadísticas del dataset
+pandas>=2.0.0
+
+# PyYAML - Archivos de configuración
+# Lectura/escritura de configs de entrenamiento y dataset
+PyYAML>=6.0
+
+# ============================================================================
+# Visualización y Gráficas
+# ============================================================================
+
+# Matplotlib - Librería de plotting
+# Gráficas de pérdida, métricas y curvas de evaluación
+matplotlib>=3.7.0
+
+# Seaborn - Visualización estadística
+# Gráficas avanzadas como matrices de confusión
+seaborn>=0.12.0
+
+# ============================================================================
+# Progreso y Logging
+# ============================================================================
+
+# tqdm - Barras de progreso
+# Visualización del progreso durante entrenamiento y procesamiento
+tqdm>=4.65.0
+
+# ============================================================================
+# Evaluación y Métricas
+# ============================================================================
+
+# scikit-learn - Utilidades de ML y métricas
+# Cálculo de precision, recall, F1-score, confusion matrix
+scikit-learn>=1.3.0
+
+# ============================================================================
+# MLOps y Tracking de Experimentos (Opcional)
+# ============================================================================
+
+# TensorBoard - Visualización de entrenamiento
+# Monitoreo en tiempo real de pérdidas y métricas
+tensorboard>=2.13.0
+
+# MLflow - Tracking de experimentos (opcional)
+# Sistema completo de gestión del ciclo de vida de ML
+# mlflow>=2.5.0
+
+# Weights & Biases - Tracking de experimentos (opcional)
+# Plataforma cloud para tracking y colaboración
+# wandb>=0.15.0
+
+# ============================================================================
+# Herramientas de Desarrollo
+# ============================================================================
+
+# IPython - Shell interactivo de Python
+# Exploración de datos y debugging mejorado
+ipython>=8.14.0
+
+# Jupyter - Notebooks para experimentación
+# Análisis exploratorio de datos y prototipado
+jupyter>=1.0.0
+notebook>=7.0.0
+
+# ============================================================================
+# Cloud/Storage (Opcional)
+# ============================================================================
+
+# Google Cloud Storage - Para entrenamiento en GCP
+# Almacenamiento de modelos y datasets en la nube
+# google-cloud-storage>=2.10.0
+
+# AWS S3 - Para entrenamiento en AWS
+# Almacenamiento en Amazon Web Services
+# boto3>=1.28.0
+
+# ============================================================================
+# Notas de Versión
+# ============================================================================
+
+# Versión de Python: Requiere Python 3.10+
+#
+# Requisitos de GPU:
+# - CUDA 11.8+ para soporte de GPU en PyTorch
+# - cuDNN 8.9+ recomendado
+# - GPU NVIDIA con Compute Capability 6.0+ (Pascal o más reciente)
+#
+# Configuraciones Probadas:
+# - Ubuntu 22.04 + CUDA 11.8 + PyTorch 2.0.1
+# - Google Colab (GPU gratuita)
+# - GCP Compute Engine con GPU T4
+#
+# Requisitos de Memoria:
+# - Mínimo: 8GB RAM, 6GB GPU VRAM
+# - Recomendado: 16GB RAM, 16GB GPU VRAM (T4, V100)
+# - Modelos grandes: 32GB RAM, 32GB GPU VRAM (A100)
+#
+# Tips de Instalación:
+# 1. Instalar PyTorch primero (visitar pytorch.org para versiones específicas de CUDA)
+# 2. Luego instalar otros requirements: pip install -r requirements-training.txt
+# 3. Para entrenamiento solo CPU (lento): pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+#
+# Troubleshooting:
+# - Si CUDA no se detecta: Verificar drivers NVIDIA e instalación de CUDA
+# - Si hay errores OOM: Reducir batch size en training_config.yaml
+# - Si el entrenamiento es lento: Asegurar que se está usando GPU (verificar con nvidia-smi)
+#
+# Estimación de Tiempos de Entrenamiento (100 épocas, 2000 imágenes):
+# - T4 GPU: 2-3 horas
+# - V100 GPU: 1-1.5 horas
+# - A100 GPU: 0.5-1 hora
+# - CPU: 20-30 horas (NO RECOMENDADO)

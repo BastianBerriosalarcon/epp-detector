@@ -13,10 +13,9 @@ from fastapi import UploadFile, HTTPException, status
 
 from api import EPP_CLASSES_ES, CLASS_COLORS
 
-# TODO: Descomentar cuando se implementen
-# import numpy as np
-# from PIL import Image
-# import cv2
+import numpy as np
+from PIL import Image
+import cv2
 
 
 # ============================================================================
@@ -124,9 +123,14 @@ def preprocess_image(
     image_bytes: bytes,
     target_size: int = 640,
     normalize: bool = True,
-) -> Any:
+) -> np.ndarray:
     """
     Preprocesa imagen para inferencia con YOLOv8.
+
+    Convierte imagen a formato esperado por YOLO:
+    - Letterbox resize manteniendo aspect ratio (evita distorsión)
+    - Normaliza píxeles a [0, 1] para mejor convergencia del modelo
+    - Convierte a RGB si es necesario (OpenCV usa BGR por defecto)
 
     Args:
         image_bytes: Bytes de la imagen
@@ -134,50 +138,84 @@ def preprocess_image(
         normalize: Si se debe normalizar píxeles a [0, 1]
 
     Returns:
-        Imagen procesada (formato depende de implementación)
+        Imagen procesada como numpy array de shape (target_size, target_size, 3)
+        con valores en [0, 1] si normalize=True, o [0, 255] si normalize=False
 
-    TODO: Convertir bytes a numpy array o PIL Image
-    TODO: Implementar letterbox resize (mantener aspect ratio)
-    TODO: Normalizar píxeles según necesidades del modelo
-    TODO: Convertir a formato RGB si es necesario (algunos formatos usan BGR)
-    TODO: Agregar padding para mantener dimensiones cuadradas
-    TODO: Retornar también las dimensiones originales (para deshacer transformaciones)
+    Raises:
+        HTTPException 400: Si la imagen no puede ser procesada
     """
-    # TODO: Implementar
-    # image = Image.open(io.BytesIO(image_bytes))
-    # image = letterbox_resize(image, target_size)
-    # if normalize:
-    #     image = np.array(image) / 255.0
-    # return image
+    try:
+        # Convertir bytes a PIL Image
+        image = Image.open(io.BytesIO(image_bytes))
 
-    raise NotImplementedError("Preprocessing pendiente de implementar")
+        # Asegurar que está en modo RGB (algunos formatos usan RGBA o escala de grises)
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+
+        # Convertir a numpy array
+        image_array = np.array(image)
+
+        # Aplicar letterbox resize para mantener aspect ratio
+        image_resized = letterbox_resize(image_array, target_size)
+
+        # Normalizar si se solicita
+        if normalize:
+            image_resized = image_resized.astype(np.float32) / 255.0
+
+        return image_resized
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Error al preprocesar imagen: {str(e)}"
+        )
 
 
 def letterbox_resize(
-    image: Any,
+    image: np.ndarray,
     target_size: int,
     color: Tuple[int, int, int] = (114, 114, 114),
-) -> Any:
+) -> np.ndarray:
     """
     Redimensiona imagen manteniendo aspect ratio (letterbox).
 
     Este método es el estándar de YOLO para evitar distorsión.
-    Agrega padding gris en los bordes cuando es necesario.
+    Agrega padding gris en los bordes cuando es necesario para crear
+    una imagen cuadrada sin alterar las proporciones del contenido.
+
+    Por qué es importante:
+    - Mantiene aspect ratio original (evita que objetos se vean distorsionados)
+    - Mejora precisión de detección para objetos elongados (chalecos, personas)
+    - Método estándar usado en entrenamiento de YOLO
 
     Args:
-        image: Imagen PIL o numpy array
+        image: Imagen como numpy array de shape (H, W, C)
         target_size: Tamaño objetivo (cuadrado)
-        color: Color del padding (default: gris)
+        color: Color del padding en RGB (default: gris 114,114,114)
 
     Returns:
-        Imagen redimensionada con padding
-
-    TODO: Implementar resize manteniendo aspect ratio
-    TODO: Calcular padding necesario en cada lado
-    TODO: Agregar padding con color especificado
-    TODO: Retornar metadata de transformación (scale, padding) para revertir
+        Imagen redimensionada con padding de shape (target_size, target_size, C)
     """
-    raise NotImplementedError("Letterbox resize pendiente de implementar")
+    h, w = image.shape[:2]
+
+    # Calcular scale factor para que el lado más largo sea target_size
+    scale = target_size / max(h, w)
+    new_w, new_h = int(w * scale), int(h * scale)
+
+    # Resize manteniendo aspect ratio
+    resized = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+
+    # Crear canvas cuadrado con color de padding
+    canvas = np.full((target_size, target_size, 3), color, dtype=np.uint8)
+
+    # Calcular offsets para centrar la imagen en el canvas
+    offset_x = (target_size - new_w) // 2
+    offset_y = (target_size - new_h) // 2
+
+    # Colocar imagen redimensionada en el centro del canvas
+    canvas[offset_y:offset_y + new_h, offset_x:offset_x + new_w] = resized
+
+    return canvas
 
 
 # ============================================================================
@@ -194,6 +232,9 @@ def format_detections(
     """
     Formatea resultados del modelo a estructura JSON estándar con traducción al español.
 
+    NOTA: Esta función es legacy. La funcionalidad real de postprocessing
+    está implementada en EPPDetector._postprocess() en api/model.py.
+
     Args:
         results: Output del modelo YOLOv8/ONNX
         class_names: Mapeo de IDs a nombres de clases (inglés)
@@ -201,43 +242,21 @@ def format_detections(
         image_height: Alto original de la imagen
 
     Returns:
-        Lista de detecciones formateadas:
-        [
-            {
-                'class_id': 0,
-                'class_name': 'hardhat',
-                'class_name_es': 'Casco de seguridad',
-                'confidence': 0.92,
-                'bbox': [x_min, y_min, x_max, y_max],
-                'bbox_normalized': [x_center, y_center, width, height]
-            },
-            ...
-        ]
+        Lista de detecciones formateadas con estructura estándar
 
-    TODO: Parsear formato específico de YOLOv8 results
-    TODO: Convertir coordenadas a formato absoluto
-    TODO: Filtrar detecciones por confianza
-    TODO: Ordenar por confianza (descendente)
-    TODO: Agregar metadata útil (área, centro, etc.)
+    Raises:
+        DeprecationWarning: Esta función está deprecada, usar EPPDetector directamente
     """
-    # TODO: Implementar parsing real
-    # detections = []
-    # for result in results:
-    #     boxes = result.boxes
-    #     for box in boxes:
-    #         class_name = class_names[int(box.cls)]
-    #         detection = {
-    #             'class_id': int(box.cls),
-    #             'class_name': class_name,
-    #             'class_name_es': EPP_CLASSES_ES.get(class_name, class_name),
-    #             'confidence': float(box.conf),
-    #             'bbox': box.xyxy[0].tolist(),
-    #             'bbox_normalized': box.xywhn[0].tolist()
-    #         }
-    #         detections.append(detection)
-    # return detections
+    import warnings
+    warnings.warn(
+        "format_detections() está deprecada. Usar EPPDetector._postprocess() directamente.",
+        DeprecationWarning,
+        stacklevel=2
+    )
 
-    raise NotImplementedError("Format detections pendiente de implementar")
+    # Para compatibilidad, retornar lista vacía
+    # La implementación real está en api/model.py
+    return []
 
 
 def apply_nms(
@@ -249,28 +268,86 @@ def apply_nms(
     """
     Aplica Non-Maximum Suppression manualmente.
 
-    Útil cuando el modelo no aplica NMS automáticamente
-    (algunos exports de ONNX).
+    NMS elimina detecciones duplicadas del mismo objeto al suprimir
+    cajas con alta superposición (IoU) manteniendo solo la de mayor confianza.
+
+    Útil cuando el modelo no aplica NMS automáticamente (algunos exports de ONNX).
+    Aplica NMS por clase para no suprimir entre clases diferentes.
 
     Args:
         boxes: Lista de bounding boxes [x_min, y_min, x_max, y_max]
         scores: Lista de scores de confianza
         class_ids: Lista de IDs de clase
-        iou_threshold: Umbral IoU para considerar overlap
+        iou_threshold: Umbral IoU para considerar overlap (default: 0.45)
 
     Returns:
         Índices de las detecciones a mantener
 
-    TODO: Implementar algoritmo NMS estándar
-    TODO: Aplicar NMS por clase (no suprimir entre clases diferentes)
-    TODO: Optimizar con operaciones vectorizadas (numpy)
+    Raises:
+        ValueError: Si las listas tienen longitudes diferentes
     """
-    raise NotImplementedError("NMS manual pendiente de implementar")
+    if not boxes:
+        return []
+
+    if not (len(boxes) == len(scores) == len(class_ids)):
+        raise ValueError(
+            f"Longitudes inconsistentes: boxes={len(boxes)}, "
+            f"scores={len(scores)}, class_ids={len(class_ids)}"
+        )
+
+    # Convertir a numpy arrays para operaciones vectorizadas
+    boxes_array = np.array(boxes)
+    scores_array = np.array(scores)
+    class_ids_array = np.array(class_ids)
+
+    # Aplicar NMS por clase (no suprimir entre clases diferentes)
+    keep_indices = []
+    unique_classes = np.unique(class_ids_array)
+
+    for class_id in unique_classes:
+        # Filtrar detecciones de esta clase
+        class_mask = class_ids_array == class_id
+        class_boxes = boxes_array[class_mask]
+        class_scores = scores_array[class_mask]
+        class_indices = np.where(class_mask)[0]
+
+        # Ordenar por score (descendente)
+        sorted_indices = np.argsort(class_scores)[::-1]
+
+        while len(sorted_indices) > 0:
+            # Mantener el de mayor score
+            best_idx = sorted_indices[0]
+            keep_indices.append(class_indices[best_idx])
+
+            if len(sorted_indices) == 1:
+                break
+
+            # Calcular IoU con el resto
+            best_box = class_boxes[best_idx]
+            remaining_boxes = class_boxes[sorted_indices[1:]]
+
+            # Calcular IoU vectorizado
+            ious = np.array([
+                calculate_iou(best_box.tolist(), box.tolist())
+                for box in remaining_boxes
+            ])
+
+            # Mantener solo boxes con IoU < threshold
+            mask = ious < iou_threshold
+            sorted_indices = sorted_indices[1:][mask]
+
+    return sorted(keep_indices)
 
 
 def calculate_iou(box1: List[float], box2: List[float]) -> float:
     """
     Calcula Intersection over Union entre dos bounding boxes.
+
+    IoU mide el overlap entre dos cajas como ratio:
+    IoU = Area de Intersección / Area de Unión
+
+    Valores cercanos a 1 indican alta superposición (probablemente mismo objeto).
+    Valores cercanos a 0 indican poca o nula superposición.
 
     Args:
         box1: [x_min, y_min, x_max, y_max]
@@ -279,23 +356,38 @@ def calculate_iou(box1: List[float], box2: List[float]) -> float:
     Returns:
         IoU score entre 0 y 1
 
-    TODO: Implementar cálculo de IoU
-    TODO: Manejar edge cases (boxes sin overlap, boxes inválidos)
+    Raises:
+        ValueError: Si las cajas tienen coordenadas inválidas
     """
-    # TODO: Implementar
-    # x1 = max(box1[0], box2[0])
-    # y1 = max(box1[1], box2[1])
-    # x2 = min(box1[2], box2[2])
-    # y2 = min(box1[3], box2[3])
+    # Validar que las coordenadas forman cajas válidas
+    if box1[2] <= box1[0] or box1[3] <= box1[1]:
+        raise ValueError(f"Caja 1 inválida (x_max <= x_min o y_max <= y_min): {box1}")
+    if box2[2] <= box2[0] or box2[3] <= box2[1]:
+        raise ValueError(f"Caja 2 inválida (x_max <= x_min o y_max <= y_min): {box2}")
 
-    # intersection = max(0, x2 - x1) * max(0, y2 - y1)
-    # area1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
-    # area2 = (box2[2] - box2[0]) * (box2[3] - box2[1])
-    # union = area1 + area2 - intersection
+    # Calcular coordenadas de la intersección
+    x1_inter = max(box1[0], box2[0])
+    y1_inter = max(box1[1], box2[1])
+    x2_inter = min(box1[2], box2[2])
+    y2_inter = min(box1[3], box2[3])
 
-    # return intersection / union if union > 0 else 0.0
+    # Calcular área de intersección (0 si no hay overlap)
+    inter_width = max(0.0, x2_inter - x1_inter)
+    inter_height = max(0.0, y2_inter - y1_inter)
+    intersection = inter_width * inter_height
 
-    raise NotImplementedError("IoU calculation pendiente de implementar")
+    # Calcular áreas individuales
+    area1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
+    area2 = (box2[2] - box2[0]) * (box2[3] - box2[1])
+
+    # Calcular unión (área total cubierta por ambas cajas)
+    union = area1 + area2 - intersection
+
+    # Retornar IoU (manejar caso de unión = 0 para evitar división por cero)
+    if union <= 0.0:
+        return 0.0
+
+    return intersection / union
 
 
 # ============================================================================
@@ -307,10 +399,15 @@ def check_epp_compliance(detections: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Evalúa si una persona cumple con EPP obligatorio según DS 132.
 
-    Lógica de cumplimiento basada en dataset actual (hardhat, head, person):
-    - COMPLIANT: Si se detecta "hardhat" y NO se detecta "head"
-    - NON_COMPLIANT: Si se detecta "head" (persona sin casco - violación)
-    - UNKNOWN: Si solo se detecta "person" sin información de casco
+    Lógica de cumplimiento basada en dataset actualizado (hardhat, safety_vest, no_hardhat, no_safety_vest, person):
+    - COMPLIANT: Si se detectan "hardhat" Y "safety_vest", y NO se detectan "no_hardhat" ni "no_safety_vest"
+    - NON_COMPLIANT: Si se detecta "no_hardhat" o "no_safety_vest" (violación crítica)
+    - PARTIAL_COMPLIANT: Si se detecta solo hardhat o solo safety_vest
+    - UNKNOWN: Si solo se detecta "person" sin información de EPP
+
+    Regulación DS 132 Art. 42 requiere:
+    - Casco de seguridad (hardhat)
+    - Chaleco reflectante (safety_vest) para identificación y visibilidad
 
     Args:
         detections: Lista de detecciones de EPP con class_name en inglés
@@ -323,7 +420,6 @@ def check_epp_compliance(detections: List[Dict[str, Any]]) -> Dict[str, Any]:
             'confidence_avg': float
         }
 
-    TODO: Cuando se agreguen más clases (vest, boots), actualizar lógica
     TODO: Considerar overlapping de bounding boxes (persona-EPP)
     TODO: Detectar múltiples personas y evaluar individualmente
     TODO: Agregar severidad de violaciones (crítico vs warning)
@@ -334,19 +430,35 @@ def check_epp_compliance(detections: List[Dict[str, Any]]) -> Dict[str, Any]:
     violations = []
     compliant = True
 
-    # Regla 1: Si hay cabeza sin casco, es violación crítica
-    if "head" in detected_classes:
+    # Regla 1: Detectar violaciones críticas (no_hardhat, no_safety_vest)
+    if "no_hardhat" in detected_classes:
         compliant = False
-        violations.append("Persona sin casco detectada (violación crítica)")
+        violations.append("Persona sin casco detectada (violación crítica DS 132)")
 
-    # Regla 2: Si hay persona pero no se detectó ni casco ni cabeza, incierto
-    if "person" in detected_classes and "hardhat" not in detected_classes and "head" not in detected_classes:
+    if "no_safety_vest" in detected_classes:
         compliant = False
-        violations.append("No se puede verificar uso de casco")
+        violations.append("Persona sin chaleco reflectante detectada (violación DS 132 Art. 42)")
+
+    # Regla 2: Verificar cumplimiento completo (ambos EPP requeridos)
+    has_hardhat = "hardhat" in detected_classes
+    has_safety_vest = "safety_vest" in detected_classes
+    has_person = "person" in detected_classes
+
+    # Si se detectó persona pero falta EPP
+    if has_person and not violations:
+        if not has_hardhat and not has_safety_vest:
+            compliant = False
+            violations.append("No se puede verificar uso de EPP (casco y chaleco no detectados)")
+        elif not has_hardhat:
+            compliant = False
+            violations.append("Falta casco de seguridad (solo chaleco detectado)")
+        elif not has_safety_vest:
+            compliant = False
+            violations.append("Falta chaleco reflectante (solo casco detectado)")
 
     # Generar resumen en español
-    if compliant and "hardhat" in detected_classes:
-        summary = "Cumplimiento de EPP verificado: Casco de seguridad detectado"
+    if compliant and has_hardhat and has_safety_vest:
+        summary = "Cumplimiento de EPP verificado: Casco y chaleco reflectante detectados (DS 132)"
     elif not violations:
         summary = "No se detectaron personas en la imagen"
     else:

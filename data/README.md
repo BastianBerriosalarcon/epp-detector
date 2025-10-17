@@ -1,407 +1,200 @@
-# Documentación de Datasets
+# Dataset de EPP para Minería Chilena
 
-Información completa sobre los datasets utilizados para entrenar y evaluar el modelo de detección de cascos.
+## Resumen
 
-## Tabla de Contenidos
+Este proyecto utiliza el dataset **Construction Site Safety v27** de Roboflow como base para entrenar un detector de EPP adaptado a la minería chilena.
 
-1. [Dataset Base: Roboflow](#dataset-base-roboflow)
-2. [Dataset Chile (Futuro)](#dataset-chile-futuro)
-3. [Clases Detectadas](#clases-detectadas)
-4. [Splits de Datos](#splits-de-datos)
-5. [Data Augmentation](#data-augmentation)
-6. [Estadísticas](#estadísticas)
-7. [Uso](#uso)
+**Ubicación:** `/home/bastian_berrios/epp-detector/data/roboflow/`
 
----
+## Estadísticas del Dataset
 
-## Dataset Base: Roboflow
+- **Total de imágenes:** 2,799
+  - Training: 2,603 imágenes (93%)
+  - Validation: 114 imágenes (4%)
+  - Test: 82 imágenes (3%)
+- **Total de anotaciones:** 34,780 objetos etiquetados
+- **Formato:** YOLOv8 (txt files con formato: `class_id x_center y_center width height`)
+- **Licencia:** CC BY 4.0
 
-### Hard Hat Workers Dataset
+## Clases del Dataset (10 clases)
 
-**Fuente:** [Roboflow Universe - Hard Hat Workers](https://universe.roboflow.com/roboflow-universe-projects/hard-hat-workers)
+### Clases Relevantes para DS 132 (Reglamento Minero Chileno)
 
-**Características:**
-- **Proyecto**: hard-hat-workers
-- **Workspace**: roboflow-universe-projects
-- **Versión**: 2
-- **Formato**: YOLOv8 (formato nativo de Ultralytics)
-- **Tamaño estimado**: ~5,000 imágenes
-- **Licencia**: CC BY 4.0 (uso libre con atribución)
+| ID | Nombre (EN) | Nombre (ES) | Tipo | Relevancia |
+|----|-------------|-------------|------|------------|
+| 0 | Hardhat | Casco de seguridad | EPP Obligatorio | Alta - Requisito DS 132 |
+| 7 | Safety Vest | Chaleco reflectante | EPP Obligatorio | Alta - Requisito DS 132 |
+| 2 | NO-Hardhat | Sin casco | Violación | Alta - Infracción crítica |
+| 4 | NO-Safety Vest | Sin chaleco | Violación | Alta - Infracción crítica |
+| 5 | Person | Persona | Contexto | Media - Para conteo de trabajadores |
 
-### Contenido del Dataset
+### Clases de Contexto (útiles pero no son EPP)
 
-**Escenarios incluidos:**
-- Sitios de construcción
-- Fábricas industriales
-- Instalaciones de manufactura
-- Ambientes exteriores e interiores
-- Múltiples condiciones de iluminación
+| ID | Nombre (EN) | Nombre (ES) | Tipo | Relevancia |
+|----|-------------|-------------|------|------------|
+| 6 | Safety Cone | Cono de seguridad | Señalización | Baja - Útil para contexto de zona |
+| 8 | machinery | Maquinaria | Equipo | Baja - Contexto de operaciones |
+| 9 | vehicle | Vehículo | Transporte | Baja - Contexto de faena |
 
-**Distribución geográfica:**
-- Estados Unidos: ~60%
-- Europa: ~25%
-- Asia: ~10%
-- Otros: ~5%
+### Clases NO Relevantes (específicas de construcción/pandemia)
 
-**Calidad de anotaciones:**
-- Anotaciones manuales verificadas
-- Bounding boxes ajustados con precisión
-- Validación de calidad multi-ronda
-- Consistencia entre anotadores > 95%
+| ID | Nombre (EN) | Nombre (ES) | Tipo | Relevancia |
+|----|-------------|-------------|------|------------|
+| 1 | Mask | Mascarilla | EPP COVID | Ninguna - No aplica DS 132 |
+| 3 | NO-Mask | Sin mascarilla | Violación COVID | Ninguna - No aplica DS 132 |
 
-### Limitaciones para Contexto Chileno
+## Lógica de Cumplimiento de EPP (DS 132)
 
-Si bien es un dataset de alta calidad, presenta limitaciones para aplicación en minería chilena:
+Según el Decreto Supremo 132 del Ministerio de Minería de Chile, el EPP mínimo obligatorio es:
 
-1. **Contexto:** Principalmente construcción, no minería
-2. **Equipamiento:** Cascos tipo construcción (no mineros certificados)
-3. **Condiciones ambientales:** No incluye desierto, alta radiación UV
-4. **Uniformes:** No incluye colores corporativos de mineras chilenas
-5. **Señalética:** Ausencia de señalética SERNAGEOMIN
+**EPP Obligatorio:**
+- Casco de seguridad (Hardhat)
+- Chaleco reflectante (Safety Vest)
 
-**Estrategia:** Usar como dataset base para transfer learning, luego fine-tuning con datos locales (ver `docs/chile_context.md`).
+**Evaluación de Cumplimiento:**
 
----
+```python
+# Persona CUMPLE si:
+- Detectado: Hardhat (clase 0) Y Safety Vest (clase 7)
+- NO detectado: NO-Hardhat (clase 2) NI NO-Safety Vest (clase 4)
 
-## Dataset Chile (Futuro)
+# Persona NO CUMPLE si:
+- Detectado: NO-Hardhat (clase 2) O NO-Safety Vest (clase 4)
 
-### Objetivo
-
-Crear dataset complementario con imágenes específicas de la industria minera chilena para fine-tuning localizado.
-
-### Especificaciones Target
-
-**Tamaño:**
-- **Fase 1 (MVP)**: 500-1,000 imágenes
-- **Fase 2**: 2,000-5,000 imágenes
-- **Fase 3**: Recolección continua en producción
-
-**Contenido objetivo:**
-- Faenas mineras reales (con permisos)
-- Cascos mineros certificados Chile
-- Condiciones del desierto de Atacama
-- Distancias típicas de cámaras industriales (10-30m)
-- Uniformes corporativos chilenos
-- Señalética local
-
-**Fuentes planificadas:**
-- Colaboración con mineras (CODELCO, BHP, etc.)
-- Videos públicos de seguridad (SERNAGEOMIN, ACHS)
-- Crowdsourcing controlado con trabajadores
-
-### Estado Actual
-
-**Estado:** Pendiente
-
-**Próximos pasos:**
-1. Definir protocolo de captura de datos
-2. Obtener permisos y autorizaciones
-3. Desarrollar pipeline de anotación
-4. Validar calidad de anotaciones
-5. Integrar con pipeline de training
-
-**Ver:** `docs/chile_context.md` para estrategia completa.
-
----
-
-## Clases Detectadas
-
-El modelo detecta **3 clases** de objetos:
-
-### 1. `hardhat` (Casco)
-
-**Descripción:** Casco de seguridad correctamente colocado en la cabeza de una persona.
-
-**Características:**
-- Casco visible y reconocible
-- Posicionado correctamente en la cabeza
-- Puede ser de cualquier color (blanco, amarillo, naranja, azul, rojo)
-- Incluye cascos con o sin accesorios (visera, lámpara, orejeras)
-
-**Importancia:** Clase objetivo principal. Detectar presencia = cumplimiento.
-
-### 2. `head` (Cabeza sin casco)
-
-**Descripción:** Cabeza humana visible sin casco de protección.
-
-**Características:**
-- Cabeza claramente visible
-- SIN casco de seguridad
-- Puede incluir otros accesorios (gorro, pelo, etc.)
-
-**Importancia:** Indica incumplimiento de normas de seguridad.
-
-### 3. `person` (Persona)
-
-**Descripción:** Persona completa o parcial en la escena.
-
-**Características:**
-- Cuerpo humano visible (completo o parcial)
-- Utilizado como contexto adicional
-- Ayuda a distinguir cabezas de otros objetos
-
-**Importancia:** Contexto para validación de detecciones.
-
-### Mapeo de IDs
-
-```yaml
-# data.yaml
-names:
-  0: hardhat
-  1: head
-  2: person
+# Estado DESCONOCIDO si:
+- Solo detectado: Person (clase 5) sin detección de EPP/violaciones
 ```
 
----
+## Estrategia de Entrenamiento
 
-## Splits de Datos
+### Opción 1: Usar todas las clases (Recomendado para comenzar)
 
-Los datos se dividen en tres conjuntos para training, validación y testing.
+Entrenar con las 10 clases originales del dataset para aprovechar toda la información disponible.
 
-### Distribución Estándar
+**Ventajas:**
+- Más datos de entrenamiento
+- Contexto completo de escena (maquinaria, vehículos)
+- Detección de conos útil para zonas de riesgo
 
-**Training Set (70-75%):**
-- Usado para entrenar el modelo
-- Mayor cantidad de imágenes
-- Incluye data augmentation
+**Desventajas:**
+- Clases de mascarilla desperdician capacidad del modelo
+- Modelo más grande (10 clases vs 6 clases)
 
-**Validation Set (15-20%):**
-- Evaluación durante training
-- Early stopping basado en val loss
-- NO se usa para training
-- SIN data augmentation (solo resize)
+**Comando:**
+```bash
+python scripts/train_gcp.py \
+    --data /home/bastian_berrios/epp-detector/data/roboflow/data.yaml \
+    --epochs 50 \
+    --batch-size 16 \
+    --img-size 640
+```
 
-**Test Set (10-15%):**
-- Evaluación final del modelo
-- NUNCA visto durante training
-- Reporte de métricas oficiales
-- SIN data augmentation
+### Opción 2: Filtrar clases irrelevantes
 
-### Splits del Dataset Roboflow
+Crear un subset del dataset eliminando clases 1 (Mask) y 3 (NO-Mask).
 
-Los splits exactos se definen en `data.yaml` después de descargar el dataset:
+**Ventajas:**
+- Modelo más enfocado en EPP minero
+- Menos clases = modelo más pequeño y rápido
+
+**Desventajas:**
+- Requiere pre-procesamiento del dataset
+- Pierde algunas imágenes si solo contienen mascarillas
+
+**Implementación:** Requiere script de filtrado (pendiente)
+
+### Opción 3: Transfer Learning + Fine-tuning con datos chilenos (Largo plazo)
+
+1. Pre-entrenar con dataset Roboflow completo (10 clases)
+2. Recolectar imágenes de faenas mineras chilenas (objetivo: 1,000+ imágenes)
+3. Fine-tune el modelo con datos localizados
+
+**Ventajas:**
+- Mejor adaptación a condiciones chilenas (iluminación desértica, tipos de casco/chaleco locales)
+- Mayor precisión en producción
+
+**Desventajas:**
+- Requiere inversión en recolección de datos
+- Proceso más largo
+
+## Distribución de Clases en el Dataset
+
+Para verificar la distribución de clases en el dataset:
+
+```bash
+cd /home/bastian_berrios/epp-detector/data/roboflow
+python3 << 'EOF'
+import os
+from collections import Counter
+
+classes = {
+    0: "Hardhat", 1: "Mask", 2: "NO-Hardhat", 3: "NO-Mask",
+    4: "NO-Safety Vest", 5: "Person", 6: "Safety Cone",
+    7: "Safety Vest", 8: "machinery", 9: "vehicle"
+}
+
+class_counts = Counter()
+
+for split in ['train', 'valid', 'test']:
+    label_dir = f'{split}/labels'
+    for label_file in os.listdir(label_dir):
+        if label_file.endswith('.txt'):
+            with open(f'{label_dir}/{label_file}', 'r') as f:
+                for line in f:
+                    class_id = int(line.split()[0])
+                    class_counts[class_id] += 1
+
+print("Distribución de clases en el dataset:")
+print("-" * 50)
+for class_id in sorted(class_counts.keys()):
+    count = class_counts[class_id]
+    pct = (count / sum(class_counts.values())) * 100
+    print(f"{class_id:2d} | {classes[class_id]:20s} | {count:6d} ({pct:5.2f}%)")
+print("-" * 50)
+print(f"Total de anotaciones: {sum(class_counts.values())}")
+EOF
+```
+
+## Configuración del Modelo
+
+El archivo `data.yaml` está configurado con:
 
 ```yaml
-# Ejemplo de data.yaml
-path: /path/to/dataset
+path: /home/bastian_berrios/epp-detector/data/roboflow
 train: train/images
 val: valid/images
 test: test/images
-
-nc: 3
-names: ['hardhat', 'head', 'person']
+nc: 10
+names:
+  - Hardhat
+  - Mask
+  - NO-Hardhat
+  - NO-Mask
+  - NO-Safety Vest
+  - Person
+  - Safety Cone
+  - Safety Vest
+  - machinery
+  - vehicle
 ```
 
-**Verificar splits:**
-```bash
-# Después de descargar
-cat data/roboflow/data.yaml
+## Próximos Pasos
 
-# Contar imágenes por split
-ls data/roboflow/train/images | wc -l
-ls data/roboflow/valid/images | wc -l
-ls data/roboflow/test/images | wc -l
-```
-
----
-
-## Data Augmentation
-
-Durante el entrenamiento se aplican transformaciones para mejorar generalización y robustez.
-
-### Augmentations Aplicadas
-
-**Transformaciones geométricas:**
-- **Mosaic (1.0)**: Combina 4 imágenes en una mosaico
-- **MixUp (0.0)**: Mezcla dos imágenes (deshabilitado por defecto)
-- **Translation (0.1)**: Desplazamiento ±10%
-- **Scale (0.5)**: Escalado 0.5x - 1.5x
-- **Rotation (0.0°)**: Sin rotación (vertical importante para cascos)
-- **Shear (0.0°)**: Sin shearing
-- **Perspective (0.0)**: Sin transformación perspectiva
-- **Flip horizontal (0.5)**: 50% probabilidad de flip izquierda-derecha
-- **Flip vertical (0.0)**: Sin flip vertical (arriba-abajo no realista)
-
-**Transformaciones de color:**
-- **HSV-Hue (0.015)**: Variación de tono ±1.5%
-- **HSV-Saturation (0.7)**: Variación saturación ±70%
-- **HSV-Value (0.4)**: Variación brillo ±40%
-
-### Configuración en Training Script
-
-```python
-# scripts/train_gcp.py
-train_config = {
-    # ... otros parámetros
-    "hsv_h": 0.015,
-    "hsv_s": 0.7,
-    "hsv_v": 0.4,
-    "degrees": 0.0,
-    "translate": 0.1,
-    "scale": 0.5,
-    "shear": 0.0,
-    "perspective": 0.0,
-    "flipud": 0.0,
-    "fliplr": 0.5,
-    "mosaic": 1.0,
-    "mixup": 0.0,
-}
-```
-
-### Justificación
-
-**Por qué no rotación:**
-- Cascos tienen orientación vertical natural
-- Rotar imagen crea ejemplos no realistas
-- Puede confundir al modelo
-
-**Por qué HSV fuerte:**
-- Simula diferentes condiciones de luz (día, noche, sombra)
-- Cascos de diferentes colores y desgaste
-- Importante para generalización
-
-**Por qué Mosaic:**
-- Aumenta diversidad de contextos
-- Mejora detección de objetos pequeños
-- Estándar en YOLOv8
-
----
-
-## Estadísticas
-
-### Dataset Base Roboflow
-
-**Tamaño estimado** (se actualizará después de descarga):
-
-| Split      | Imágenes | Labels | Objetos/Imagen |
-|------------|----------|--------|----------------|
-| Train      | ~3,500   | ~3,500 | 2.5            |
-| Validation | ~750     | ~750   | 2.5            |
-| Test       | ~750     | ~750   | 2.5            |
-| **Total**  | **~5,000** | **~5,000** | **2.5** |
-
-**Distribución de clases** (estimado):
-
-| Clase    | Count  | Porcentaje |
-|----------|--------|------------|
-| hardhat  | ~7,000 | 55%        |
-| head     | ~3,500 | 28%        |
-| person   | ~2,000 | 17%        |
-| **Total**| **~12,500** | **100%** |
-
-**Estadísticas de bounding boxes:**
-
-| Métrica       | Valor    |
-|---------------|----------|
-| Ancho medio   | 12-15%   |
-| Alto medio    | 15-20%   |
-| Área media    | 2-3%     |
-| IoU promedio  | 0.85+    |
-
-### Actualizar Estadísticas
-
-Después de descargar el dataset, ejecutar:
-
-```bash
-# Generar estadísticas reales
-python scripts/analyze_dataset.py --dataset-path data/roboflow
-```
-
-**TODO:** Agregar script de análisis de dataset.
-
----
-
-## Uso
-
-### Descargar Dataset
-
-```bash
-# Configurar API key en .env
-echo "ROBOFLOW_API_KEY=tu_key_aqui" > .env
-
-# Descargar dataset
-python data/scripts/download_roboflow.py --output-dir ./data/roboflow
-
-# Verificar descarga
-ls -lh data/roboflow/
-cat data/roboflow/data.yaml
-```
-
-### Estructura de Directorios
-
-Después de la descarga:
-
-```
-data/roboflow/
-├── data.yaml              # Configuración del dataset
-├── README.roboflow.txt    # Info de Roboflow
-├── train/
-│   ├── images/
-│   │   ├── img001.jpg
-│   │   ├── img002.jpg
-│   │   └── ...
-│   └── labels/
-│       ├── img001.txt     # Formato YOLO
-│       ├── img002.txt
-│       └── ...
-├── valid/
-│   ├── images/
-│   └── labels/
-└── test/
-    ├── images/
-    └── labels/
-```
-
-### Formato de Labels (YOLO)
-
-Cada archivo `.txt` contiene una línea por objeto:
-
-```
-<class_id> <x_center> <y_center> <width> <height>
-```
-
-**Valores normalizados [0, 1]:**
-
-```txt
-0 0.5 0.3 0.15 0.2    # hardhat en centro superior
-1 0.7 0.6 0.12 0.18   # head sin casco a la derecha
-2 0.5 0.5 0.4 0.8     # person completa
-```
-
-### Entrenar con Dataset
-
-```bash
-# Training básico
-python scripts/train_gcp.py \
-    --dataset-path ./data/roboflow \
-    --epochs 100 \
-    --batch-size 16
-
-# Training avanzado
-python scripts/train_gcp.py \
-    --dataset-path ./data/roboflow \
-    --epochs 100 \
-    --batch-size 16 \
-    --model yolov8n.pt \
-    --img-size 640 \
-    --export-onnx
-```
-
----
+1. **Verificar distribución de clases** (ejecutar script arriba)
+2. **Entrenar modelo base** con Opción 1 (todas las clases)
+3. **Evaluar resultados** en conjunto de validación
+4. **Analizar matriz de confusión** para clases críticas (Hardhat, Safety Vest, violaciones)
+5. **Decidir** si filtrar clases irrelevantes o continuar con todas
+6. **Planificar** recolección de datos chilenos para fine-tuning
 
 ## Referencias
 
-- **Roboflow Dataset**: https://universe.roboflow.com/roboflow-universe-projects/hard-hat-workers
-- **YOLOv8 Data Format**: https://docs.ultralytics.com/datasets/detect/
-- **Data Augmentation**: https://docs.ultralytics.com/modes/train/#augmentation
-- **Transfer Learning Strategy**: Ver `docs/chile_context.md`
+- **Dataset Source:** [Roboflow Construction Site Safety v27](https://universe.roboflow.com/roboflow-universe-projects/construction-site-safety/dataset/27)
+- **Regulación:** Decreto Supremo 132 - Reglamento de Seguridad Minera (Chile)
+- **YOLOv8 Docs:** [Ultralytics YOLOv8 Training](https://docs.ultralytics.com/modes/train/)
 
----
+## Notas Importantes
 
-## Contacto
-
-Para preguntas sobre los datasets:
-- Abrir issue en GitHub
-- Contactar al mantenedor del proyecto
-
-**Última actualización:** 2025-01-15
+- **Desbalance de clases:** Es probable que algunas clases (Person, Hardhat) tengan muchas más anotaciones que violaciones (NO-Hardhat, NO-Safety Vest). Considerar class weights durante entrenamiento.
+- **Calidad de anotaciones:** Dataset de Roboflow es de construcción, no minería. Puede haber diferencias en tipos de casco/chaleco entre construcción y minería chilena.
+- **Contexto internacional:** Dataset incluye imágenes de varios países. Fine-tuning con datos chilenos mejorará significativamente la precisión en producción.

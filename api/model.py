@@ -458,11 +458,65 @@ class EPPDetector:
                         detections.append(detection)
 
             elif self.model_type == "onnx":
-                # ONNX output format (model-specific, may need adjustment)
-                # This is a placeholder - actual format depends on ONNX export
-                output = results[0]
-                # TODO: Parse ONNX output based on actual model export format
-                pass
+                # ONNX YOLOv8 output format: [batch, num_boxes, 5+num_classes]
+                # Each detection: [x_center, y_center, width, height, *class_probs]
+                # NOTE: YOLOv8 ONNX export concatenates bbox coords with class probs
+                output = results[0]  # Shape: (batch, num_boxes, 5+num_classes)
+
+                # Process each image in batch
+                batch_size = output.shape[0]
+                for batch_idx in range(batch_size):
+                    predictions = output[batch_idx]  # Shape: (num_boxes, 5+num_classes)
+
+                    # Extract bbox coordinates (center format) and class probabilities
+                    boxes_center = predictions[:, :4]  # [x_center, y_center, w, h]
+                    class_probs = predictions[:, 4:]   # [prob_class_0, prob_class_1, ...]
+
+                    # Get class with highest probability for each box
+                    class_ids = np.argmax(class_probs, axis=1)
+                    confidences = np.max(class_probs, axis=1)
+
+                    # Filter by confidence threshold
+                    mask = confidences >= self.confidence_threshold
+                    boxes_center = boxes_center[mask]
+                    class_ids = class_ids[mask]
+                    confidences = confidences[mask]
+
+                    # Convert from center format to xyxy format
+                    # center format: [x_center, y_center, width, height]
+                    # xyxy format: [x_min, y_min, x_max, y_max]
+                    boxes_xyxy = np.zeros_like(boxes_center)
+                    boxes_xyxy[:, 0] = boxes_center[:, 0] - boxes_center[:, 2] / 2  # x_min
+                    boxes_xyxy[:, 1] = boxes_center[:, 1] - boxes_center[:, 3] / 2  # y_min
+                    boxes_xyxy[:, 2] = boxes_center[:, 0] + boxes_center[:, 2] / 2  # x_max
+                    boxes_xyxy[:, 3] = boxes_center[:, 1] + boxes_center[:, 3] / 2  # y_max
+
+                    # Scale coordinates from normalized [0,1] to pixel values
+                    boxes_xyxy *= self.input_size
+
+                    # Normalize bbox for bbox_norm (center format with normalized coords)
+                    # Format: [x_center_norm, y_center_norm, width_norm, height_norm]
+                    boxes_norm = boxes_center.copy()  # Already in [0,1] range
+
+                    # Create detection dictionaries
+                    for box_xyxy, box_norm, class_id, confidence in zip(
+                        boxes_xyxy, boxes_norm, class_ids, confidences
+                    ):
+                        # Skip invalid class IDs
+                        if int(class_id) not in self.class_names:
+                            logger.warning(
+                                f"Skipping detection with invalid class_id: {class_id}"
+                            )
+                            continue
+
+                        detection = {
+                            "class_id": int(class_id),
+                            "class_name": self.class_names[int(class_id)],
+                            "confidence": float(confidence),
+                            "bbox": box_xyxy.tolist(),
+                            "bbox_norm": box_norm.tolist(),
+                        }
+                        detections.append(detection)
 
             return detections
 

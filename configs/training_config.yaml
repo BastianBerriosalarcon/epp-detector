@@ -1,0 +1,323 @@
+# Configuración de Entrenamiento YOLOv8 para Detección de EPP
+# Sistema de Detección de Equipos de Protección Personal para Minería Chilena
+#
+# Este archivo centraliza todos los hiperparámetros y configuraciones de entrenamiento.
+# Modificar estos valores según el hardware disponible y características del dataset.
+
+# ============================================================================
+# Configuración del Modelo
+# ============================================================================
+
+# Tamaño de arquitectura del modelo
+# Opciones: yolov8n (nano), yolov8s (small), yolov8m (medium), yolov8l (large), yolov8x (xlarge)
+# Recomendación: yolov8n para deployment (inferencia rápida), yolov8s para mejor accuracy
+model: yolov8n.pt  # Iniciar desde pesos pre-entrenados en COCO
+
+# Tamaño de imagen de entrada (debe ser múltiplo de 32 para YOLO)
+# Tamaño mayor = mejor accuracy pero inferencia más lenta
+# Estándar: 640, Alta precisión: 1280, Rápido: 416
+imgsz: 640
+
+# ============================================================================
+# Configuración del Dataset
+# ============================================================================
+
+# Ruta al archivo YAML del dataset (relativa a raíz del proyecto o absoluta)
+data: data/epp_dataset.yaml
+
+# Número de clases (debe coincidir con dataset YAML)
+nc: 5
+
+# Nombres de clases (deben coincidir con orden en dataset YAML)
+names:
+  - hardhat
+  - safety_vest
+  - no_hardhat
+  - no_safety_vest
+  - person
+
+# ============================================================================
+# Hiperparámetros de Entrenamiento
+# ============================================================================
+
+# Número de épocas de entrenamiento
+# Recomendación: 100-150 para buena convergencia
+# Más épocas si el dataset es pequeño (<1000 imágenes)
+epochs: 100
+
+# Tamaño de batch (ajustar según memoria GPU disponible)
+# GPU T4 (16GB): 16-32
+# GPU V100 (32GB): 32-64
+# CPU: 4-8 (muy lento)
+batch: 16
+
+# Paciencia para early stopping (épocas sin mejora)
+# Establecer en 0 para deshabilitar early stopping
+patience: 20
+
+# Guardar checkpoint cada N épocas
+save_period: 10
+
+# ============================================================================
+# Configuración del Optimizador
+# ============================================================================
+
+# Tipo de optimizador: SGD, Adam, AdamW
+# SGD: Mejor generalización, requiere ajuste fino de learning rate
+# AdamW: Convergencia más rápida, menos sensible al LR
+optimizer: AdamW
+
+# Learning rate inicial
+# SGD: 0.01, AdamW: 0.001
+lr0: 0.001
+
+# Learning rate final (como fracción de lr0)
+lrf: 0.01
+
+# Momentum (para SGD)
+momentum: 0.937
+
+# Weight decay (regularización L2)
+weight_decay: 0.0005
+
+# Épocas de warmup (aumentar gradualmente LR de 0 a lr0)
+warmup_epochs: 3.0
+
+# Momentum durante warmup
+warmup_momentum: 0.8
+
+# Learning rate de bias durante warmup
+warmup_bias_lr: 0.1
+
+# ============================================================================
+# Pesos de Función de Pérdida
+# ============================================================================
+
+# Peso de pérdida de box (para regresión de bounding boxes)
+box: 7.5
+
+# Peso de pérdida de clasificación
+cls: 0.5
+
+# Peso de Distribution Focal Loss (DFL)
+dfl: 1.5
+
+# Gamma de Focal Loss (0 = sin focal loss)
+fl_gamma: 0.0
+
+# ============================================================================
+# Data Augmentation (Aumento de Datos)
+# ============================================================================
+
+# Augmentation de HSV-Hue (fracción)
+# Simula diferentes condiciones de iluminación en ambientes mineros
+hsv_h: 0.015
+
+# Augmentation de HSV-Saturation (fracción)
+hsv_s: 0.7
+
+# Augmentation de HSV-Value (fracción)
+# Importante para minería: iluminación subterránea vs exterior
+hsv_v: 0.5
+
+# Augmentation de rotación (grados)
+# Mantener pequeño - los cascos no deberían estar boca abajo
+degrees: 0.0
+
+# Augmentation de traslación (fracción del tamaño de imagen)
+translate: 0.1
+
+# Augmentation de escala (ganancia)
+# Trabajadores a diferentes distancias de la cámara
+scale: 0.5
+
+# Augmentation de shear/cizallamiento (grados)
+shear: 0.0
+
+# Augmentation de perspectiva (fracción)
+perspective: 0.0
+
+# Probabilidad de flip horizontal
+# Establecido en 0.0 - texto en cascos no debe estar invertido
+flipud: 0.0
+
+# Probabilidad de flip vertical
+fliplr: 0.0
+
+# Augmentation Mosaic (probabilidad)
+# Combina 4 imágenes en una - mejora detección de objetos pequeños
+mosaic: 1.0
+
+# Augmentation MixUp (probabilidad)
+# Mezcla dos imágenes juntas
+mixup: 0.0
+
+# Augmentation Copy-Paste (probabilidad)
+# Copia objetos de una imagen a otra
+copy_paste: 0.0
+
+# ============================================================================
+# Configuración de Hardware
+# ============================================================================
+
+# Dispositivo a usar: 'cpu', 'cuda:0', o '0,1,2,3' para multi-GPU
+# Auto-detecta el mejor dispositivo disponible si no se especifica
+device: ''
+
+# Número de threads de workers para carga de datos
+# Recomendación: 8 para entrenamiento en GPU, 2 para CPU
+workers: 8
+
+# Entrenamiento con precisión mixta (más rápido en GPUs modernas)
+amp: true
+
+# Entrenamiento determinista (reproducible pero más lento)
+deterministic: false
+
+# Semilla aleatoria para reproducibilidad
+seed: 42
+
+# ============================================================================
+# Salida y Logging
+# ============================================================================
+
+# Nombre del proyecto (crea runs/detect/project_name)
+project: runs/train
+
+# Nombre del experimento (crea runs/detect/project_name/name)
+name: epp_detector
+
+# Reanudar entrenamiento desde último checkpoint
+resume: false
+
+# Guardar gráficas de entrenamiento (curvas de pérdida, métricas)
+plots: true
+
+# Salida verbosa
+verbose: true
+
+# ============================================================================
+# Configuración de Validación
+# ============================================================================
+
+# Tamaño de imagen para validación (puede ser diferente del entrenamiento)
+# Usar el mismo que imgsz para consistencia
+val_imgsz: 640
+
+# Umbral de IoU para métricas de validación
+iou: 0.7
+
+# Umbral de confianza para validación
+# Más bajo que inferencia para ver más predicciones durante entrenamiento
+conf: 0.001
+
+# Validar cada N épocas
+val_freq: 1
+
+# ============================================================================
+# Configuración de Exportación de Modelo (post-entrenamiento)
+# ============================================================================
+
+# Formatos de exportación después del entrenamiento
+# Opciones: torchscript, onnx, openvino, engine, coreml, saved_model, pb, tflite
+# Para API de epp-detector: onnx
+export_formats:
+  - onnx
+
+# Exportación en precisión media (FP16) - inferencia más rápida, ligera pérdida de accuracy
+half: false
+
+# Simplificar modelo ONNX (remover nodos solo de entrenamiento)
+simplify: true
+
+# Tamaño de batch dinámico para ONNX (permite tamaños de batch variables)
+dynamic: true
+
+# Versión de opset ONNX
+opset: 12
+
+# ============================================================================
+# Estrategia de Augmentation Específica para Minería
+# ============================================================================
+
+# La siguiente estrategia de augmentation está optimizada para minería chilena:
+#
+# 1. Augmentation HSV fuerte (hsv_v=0.5):
+#    - Simula iluminación subterránea vs exterior
+#    - Resplandor del sol del desierto vs iluminación artificial
+#    - Polvo y condiciones de baja visibilidad
+#    - Aumentado a 0.5 para mejor adaptación a condiciones extremas de minería
+#
+# 2. Augmentation de escala moderada (scale=0.5):
+#    - Trabajadores a varias distancias de la cámara
+#    - Inspecciones de cerca vs monitoreo de área amplia
+#
+# 3. SIN flip horizontal (flipud=0.0):
+#    - Texto y logos en cascos deben permanecer legibles
+#    - Orientación consistente para cumplimiento regulatorio
+#
+# 4. Mosaic habilitado (mosaic=1.0):
+#    - Mejora detección de cascos pequeños en tomas amplias
+#    - Aumenta el tamaño efectivo del batch
+#    - Maneja mejor escenas aglomeradas (múltiples trabajadores)
+#
+# 5. Rotación mínima (degrees=0.0):
+#    - Cascos tienen orientación natural (no boca abajo)
+#    - Mantiene poses realistas
+
+# ============================================================================
+# Objetivos de Performance (para monitoreo)
+# ============================================================================
+
+# Métricas objetivo (no se fuerzan, solo para referencia):
+# - mAP@0.5: > 0.85 (bueno para deployment en producción)
+# - Precisión: > 0.90 (minimizar falsos positivos)
+# - Recall: > 0.85 (crítico - debe detectar violaciones de seguridad)
+# - Velocidad: < 50ms por imagen en GPU T4 (capaz de tiempo real)
+#
+# Prioridades específicas por clase:
+# - 'no_hardhat' (violación): Maximizar recall (detectar todas las violaciones)
+# - 'no_safety_vest' (violación): Maximizar recall (detectar todas las violaciones)
+# - 'hardhat': Balancear precisión y recall
+# - 'safety_vest': Balancear precisión y recall
+# - 'person': Prioridad menor, usado para contexto
+
+# ============================================================================
+# Estrategia de Transfer Learning
+# ============================================================================
+
+# Enfoque de entrenamiento recomendado:
+#
+# 1. Entrenamiento Inicial (dataset Roboflow):
+#    - epochs: 100
+#    - batch: 16
+#    - lr0: 0.001
+#    - freeze: 0 (entrenar todas las capas)
+#
+# 2. Fine-tuning (imágenes de minería chilena):
+#    - Cargar mejores pesos del paso 1
+#    - epochs: 50
+#    - batch: 8
+#    - lr0: 0.0001 (LR más bajo para fine-tuning)
+#    - freeze: 10 (congelar backbone, entrenar solo head)
+#
+# 3. Optimización para Deployment:
+#    - Exportar a ONNX con FP16
+#    - Probar en imágenes representativas de minería
+#    - Ajustar umbral de confianza basado en trade-off precisión/recall
+
+# ============================================================================
+# Notas Importantes
+# ============================================================================
+
+# - Todas las rutas son relativas a la raíz del proyecto o absolutas
+# - Uso de memoria GPU: ~6-8GB para batch=16, imgsz=640, yolov8n
+# - Tiempo de entrenamiento: ~2-3 horas para 100 épocas en GPU T4 (5000 imágenes)
+# - Para entrenamiento en CPU: Reducir batch a 4-8, esperar 10x más lento
+# - Monitorear entrenamiento: tensorboard --logdir runs/train
+#
+# Ajustes recomendados según hardware:
+# - GPU pequeña (6-8GB): batch=8, imgsz=416
+# - GPU mediana (12-16GB): batch=16, imgsz=640 (configuración actual)
+# - GPU grande (24-32GB): batch=32, imgsz=640 o batch=16, imgsz=1280
+# - CPU: batch=4, imgsz=416, epochs=10 (solo para pruebas)

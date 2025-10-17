@@ -148,7 +148,7 @@ def verify_gpu_setup(logger: logging.Logger) -> dict:
             gpu_info[f"gpu_{i}_name"] = gpu_name
             gpu_info[f"gpu_{i}_memory_gb"] = gpu_memory
     else:
-        logger.warning("⚠️  No GPU detected! Training will be VERY slow on CPU.")
+        logger.warning("[ADVERTENCIA]  No GPU detected! Training will be VERY slow on CPU.")
         logger.warning("    Make sure you're running on a GPU-enabled VM.")
 
     logger.info("=" * 80)
@@ -338,10 +338,10 @@ def train_model(
         logger.info(f"  {key}: {value}")
 
     # Start training
-    logger.info("\n🚀 Starting training...")
+    logger.info("\n[INICIO] Starting training...")
     results = model.train(**train_config)
 
-    logger.info("✅ Training completed!")
+    logger.info("[OK] Training completed!")
     logger.info("=" * 80)
 
     # Log metrics to MLflow
@@ -393,7 +393,7 @@ def export_to_onnx(model_path: Path, logger: logging.Logger) -> Path:
     logger.info("Exporting to ONNX format...")
     onnx_path = model.export(format="onnx", simplify=True)
 
-    logger.info(f"✅ ONNX model exported to: {onnx_path}")
+    logger.info(f"[OK] ONNX model exported to: {onnx_path}")
     logger.info("=" * 80)
 
     return Path(onnx_path)
@@ -439,7 +439,7 @@ def upload_to_gcs(model_path: Path, logger: logging.Logger) -> bool:
         logger.info(f"Uploading {model_path} to gs://{bucket_name}/{blob_name}")
         blob.upload_from_filename(str(model_path))
 
-        logger.info(f"✅ Upload successful!")
+        logger.info(f"[OK] Upload successful!")
         logger.info(f"   gs://{bucket_name}/{blob_name}")
         logger.info("=" * 80)
 
@@ -631,19 +631,19 @@ def main():
             mlflow.end_run()
 
         logger.info("=" * 80)
-        logger.info("✅ TRAINING PIPELINE COMPLETED SUCCESSFULLY")
+        logger.info("[OK] TRAINING PIPELINE COMPLETED SUCCESSFULLY")
         logger.info("=" * 80)
         logger.info(f"End time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         logger.info(f"Best model: {best_model_path}")
         logger.info("=" * 80)
-        logger.info("\n🎉 All done! Don't forget to STOP your GCP VM to avoid charges!")
+        logger.info("\n[COMPLETADO] All done! Don't forget to STOP your GCP VM to avoid charges!")
         logger.info("   Command: gcloud compute instances stop <instance-name>")
 
         return 0
 
     except Exception as e:
         logger.error("=" * 80)
-        logger.error("❌ TRAINING FAILED")
+        logger.error("[ERROR] TRAINING FAILED")
         logger.error("=" * 80)
         logger.exception(e)
 

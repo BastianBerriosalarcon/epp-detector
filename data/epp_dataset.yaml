@@ -1,0 +1,118 @@
+# Configuración del Dataset de Detección de EPP para YOLOv8
+# Detección de Equipos de Protección Personal (EPP) para Minería Chilena
+#
+# Este archivo define la estructura del dataset y las clases para entrenamiento YOLOv8.
+# Compatible con formato Ultralytics YOLO.
+#
+# Estructura del Dataset:
+# data/
+#   images/
+#     train/    - Imágenes de entrenamiento
+#     val/      - Imágenes de validación
+#     test/     - Imágenes de prueba (opcional)
+#   labels/
+#     train/    - Anotaciones de entrenamiento (archivos .txt)
+#     val/      - Anotaciones de validación (archivos .txt)
+#     test/     - Anotaciones de prueba (archivos .txt, opcional)
+#
+# Formato de Anotación (YOLO):
+# Cada archivo .txt contiene una línea por objeto:
+# <class_id> <x_center> <y_center> <width> <height>
+# Todos los valores están normalizados a [0, 1] relativos a dimensiones de la imagen
+
+# Rutas a los splits del dataset (relativas a este archivo o absolutas)
+path: /home/bastian_berrios/epp-detector/data  # Directorio raíz del dataset
+train: images/train  # Imágenes de entrenamiento (relativas a 'path')
+val: images/val      # Imágenes de validación (relativas a 'path')
+test: images/test    # Imágenes de prueba (opcional, relativas a 'path')
+
+# Número de clases
+nc: 5
+
+# Nombres de clases (deben coincidir con orden de EPP_CLASSES en api/__init__.py)
+# NOTA: Las clases están en inglés para coincidir con convención del dataset Roboflow
+# Las traducciones al español se manejan en la capa de API (EPP_CLASSES_ES)
+names:
+  0: hardhat        # Casco de seguridad - cumplimiento
+  1: safety_vest    # Chaleco reflectante - cumplimiento (obligatorio DS 132)
+  2: no_hardhat     # Cabeza sin casco - violación (crítica para seguridad)
+  3: no_safety_vest # Torso sin chaleco - violación (crítica para seguridad)
+  4: person         # Persona - para contexto y tracking
+
+# Descripciones de clases (para documentación)
+# hardhat: Trabajador usando casco (cumple con normativa de seguridad)
+# safety_vest: Trabajador usando chaleco reflectante (cumple con DS 132 Art. 42)
+# no_hardhat: Cabeza de trabajador visible sin casco (violación DS 132)
+# no_safety_vest: Torso de trabajador sin chaleco reflectante (violación DS 132)
+# person: Detección completa de persona (usada para verificar cumplimiento)
+
+# Contexto de Minería Chilena (Regulación DS 132):
+# - Detección de hardhat: Obligatorio para todo personal minero
+# - Detección de safety_vest: Obligatorio según DS 132 Art. 42 (identificación y visibilidad)
+# - Detección de no_hardhat: Violación crítica que requiere intervención inmediata
+# - Detección de no_safety_vest: Violación crítica de visibilidad
+# - Detección de person: Contexto para evaluar tasas de cumplimiento
+
+# Recomendaciones de Dataset:
+# - Mínimo 1000-2000 imágenes para performance razonable
+# - Balance de clases: 25% hardhat, 25% safety_vest, 15% no_hardhat, 15% no_safety_vest, 20% person
+# - Diversidad de imágenes: Múltiples ángulos, iluminación, distancias
+# - Específico de minería: Subterránea, rajo abierto, varios colores de EPP
+# - Contexto chileno: Marcas locales de EPP, regulaciones, condiciones de trabajo
+
+# Estrategia de Augmentation (configurada en training_config.yaml):
+# - Augmentations estándar de YOLO (mosaic, mixup, albumentations)
+# - Enfoque en variaciones de iluminación (minería tiene iluminación desafiante)
+# - Augmentation de escala (trabajadores a diferentes distancias de cámara)
+# - Sin flip horizontal (texto en cascos no debe estar invertido)
+
+# Objetivos de Performance del Modelo:
+# - mAP@0.5: > 0.85 (bueno para deployment)
+# - Precisión: > 0.90 (minimizar falsos positivos)
+# - Recall: > 0.85 (crítico - debe detectar violaciones)
+# - Velocidad: < 50ms por imagen en GPU T4 (capaz de tiempo real)
+
+# Estrategia de Transfer Learning:
+# 1. Iniciar con yolov8n.pt pre-entrenado en COCO (baseline)
+# 2. Fine-tune en dataset de seguridad de construcción Roboflow
+# 3. Fine-tune adicional en imágenes específicas de minería chilena
+# 4. Optimizar para deployment con exportación ONNX
+
+# Estadísticas del Dataset (se generan automáticamente por prepare_dataset.py):
+# Ver archivos train_statistics.txt, val_statistics.txt, test_statistics.txt
+# en el directorio data/ después de preparar el dataset
+
+# Fuentes de Datos Recomendadas:
+#
+# 1. Dataset Base (Roboflow Universe):
+#    - Buscar: "hard hat detection" o "construction safety"
+#    - Tamaño típico: 4000-5000 imágenes pre-anotadas
+#    - Formato: YOLOv8 (listo para usar)
+#
+# 2. Dataset Personalizado (Minería Chilena):
+#    - Cámaras de seguridad de faenas mineras
+#    - Inspecciones de seguridad documentadas
+#    - Videos de inducción (extraer frames)
+#    - Mínimo recomendado: 1000 imágenes adicionales
+#
+# 3. Herramientas de Anotación:
+#    - LabelImg: Simple y efectivo
+#    - CVAT: Plataforma web colaborativa
+#    - Roboflow: Incluye anotación y augmentation
+
+# Validación del Dataset:
+# Antes de entrenar, verificar:
+# - Todas las imágenes tienen anotaciones correspondientes
+# - Anotaciones están en formato YOLO correcto
+# - Coordenadas normalizadas están en rango [0, 1]
+# - Balance de clases es razonable
+# - No hay imágenes corruptas o duplicadas
+#
+# Ejecutar: python scripts/prepare_dataset.py --source <ruta> --output data
+
+# Notas de Implementación:
+# - Este archivo es leído por Ultralytics YOLO durante entrenamiento
+# - La ruta 'path' debe ser absoluta o relativa al directorio actual
+# - Los paths train/val/test son relativos a 'path'
+# - Las clases deben estar numeradas consecutivamente desde 0
+# - El orden de 'names' debe coincidir con class_id en anotaciones

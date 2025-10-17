@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Download Hard Hat Workers Dataset from Roboflow
+Download Construction Site Safety Dataset from Roboflow
 
-This script downloads the "Hard Hat Workers" dataset from Roboflow Universe
-in YOLOv8 format. The dataset contains images of workers with/without hard hats
-for safety detection in construction and mining environments.
+This script downloads the "Construction Site Safety" dataset from Roboflow Universe
+in YOLOv8 format. The dataset contains images of workers with/without hardhats and
+safety vests for PPE detection in construction and mining environments.
 
-Dataset: https://universe.roboflow.com/roboflow-universe-projects/hard-hat-workers
-Classes: hardhat, head, person
+Dataset: https://universe.roboflow.com/roboflow-universe-projects/construction-site-safety
+Classes: hardhat, safety_vest, no_hardhat, no_safety_vest, person
 
 Usage:
     # Download using API key from .env
@@ -17,7 +17,7 @@ Usage:
     python download_roboflow.py --output-dir ./data/roboflow
 
     # Download specific version
-    python download_roboflow.py --version 2
+    python download_roboflow.py --version 27
 
 Requirements:
     - roboflow library: pip install roboflow
@@ -61,12 +61,12 @@ except ImportError:
 
 DATASET_CONFIG = {
     "workspace": "roboflow-universe-projects",
-    "project": "hard-hat-workers",
-    "version": 2,  # Default version
+    "project": "construction-site-safety",
+    "version": 27,  # Default version
     "format": "yolov8",  # YOLOv8 format
 }
 
-EXPECTED_CLASSES = ["hardhat", "head", "person"]
+EXPECTED_CLASSES = ["hardhat", "safety_vest", "no_hardhat", "no_safety_vest", "person"]
 
 
 # =============================================================================
@@ -184,16 +184,22 @@ def download_dataset(
         logger.info("Downloading dataset (this may take a few minutes)...")
         logger.info("Downloading...")
 
-        dataset_location = dataset.download(
+        # Download returns Dataset object with location attribute
+        # Note: overwrite=True ensures fresh download even if partial download exists
+        downloaded_dataset = dataset.download(
             model_format=DATASET_CONFIG['format'],
-            location=str(output_dir)
+            location=str(output_dir),
+            overwrite=True
         )
+
+        # Get actual location from Dataset object
+        dataset_location = Path(downloaded_dataset.location)
 
         logger.info(f"Download complete!")
         logger.info(f"Dataset saved to: {dataset_location}")
         logger.info("=" * 80)
 
-        return Path(dataset_location)
+        return dataset_location
 
     except Exception as e:
         logger.error(f"Download failed: {e}")
@@ -303,8 +309,8 @@ def create_readme(dataset_path: Path, stats: dict, logger: logging.Logger):
     total_labels = sum(s["labels"] for s in stats.values())
 
     readme_content = f"""
-Hard Hat Workers Dataset - Download Information
-================================================
+Construction Site Safety Dataset - Download Information
+========================================================
 
 Dataset: {DATASET_CONFIG['project']}
 Workspace: {DATASET_CONFIG['workspace']}
@@ -351,7 +357,7 @@ Next Steps:
 
 Dataset Source:
 ---------------
-https://universe.roboflow.com/roboflow-universe-projects/hard-hat-workers
+https://universe.roboflow.com/roboflow-universe-projects/construction-site-safety
 """
 
     with open(readme_path, "w") as f:
@@ -367,7 +373,7 @@ https://universe.roboflow.com/roboflow-universe-projects/hard-hat-workers
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
-        description="Download Hard Hat Workers dataset from Roboflow",
+        description="Download Construction Site Safety dataset from Roboflow",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
 
