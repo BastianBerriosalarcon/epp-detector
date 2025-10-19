@@ -20,7 +20,6 @@ from api.utils import (  # validate_image,; validate_image_dimensions,; preproce
 # from PIL import Image
 
 
-
 # ============================================================================
 # Tests de validación de imágenes
 # ============================================================================
