@@ -38,16 +38,13 @@ WORKDIR /build
 COPY requirements.txt .
 
 # OPTIMIZACION: Crear wheels con flags adicionales para reducir tamaño
-# --no-deps: No instalar dependencias transitivas aún
 # --no-cache-dir: No cachear (ya está en ENV pero reforzamos)
 RUN pip wheel \
     --no-cache-dir \
-    --no-deps \
     --wheel-dir /wheels \
     -r requirements.txt \
     && pip wheel \
     --no-cache-dir \
-    --no-deps \
     --wheel-dir /wheels \
     requests \
     && rm -rf /root/.cache \
