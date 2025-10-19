@@ -3,7 +3,7 @@
 # Simplifica comandos comunes de desarrollo, testing y deployment
 # =============================================================================
 
-.PHONY: help install test lint format clean docker-build docker-up docker-down deploy
+.PHONY: help install test lint format clean docker-up docker-down deploy
 
 # Variables
 PYTHON := python3
@@ -113,14 +113,6 @@ check: lint format-check ## Ejecutar todas las verificaciones
 # Docker
 # =============================================================================
 
-docker-build: ## Build imagen Docker
-	@echo "$(BLUE)Building Docker image...$(NC)"
-	./scripts/docker-build.sh dev
-
-docker-build-prod: ## Build imagen Docker para producción
-	@echo "$(BLUE)Building production Docker image...$(NC)"
-	./scripts/docker-build.sh prod
-
 docker-up: ## Levantar servicios con docker-compose
 	@echo "$(BLUE)Levantando servicios...$(NC)"
 	$(DOCKER_COMPOSE) up -d
@@ -138,13 +130,6 @@ docker-logs: ## Ver logs de containers
 
 docker-shell: ## Abrir shell en container de API
 	$(DOCKER_COMPOSE) exec api /bin/bash
-
-docker-restart: docker-down docker-up ## Reiniciar servicios
-
-docker-clean: ## Limpiar containers, imágenes y volúmenes
-	@echo "$(BLUE)Limpiando Docker...$(NC)"
-	./scripts/docker-build.sh clean
-	@echo "$(GREEN)✓ Cleanup completado$(NC)"
 
 # =============================================================================
 # Development
@@ -174,7 +159,7 @@ clean: ## Limpiar archivos temporales
 	find . -type f -name "*.pyo" -delete 2>/dev/null || true
 	@echo "$(GREEN)✓ Limpieza completada$(NC)"
 
-clean-all: clean docker-clean ## Limpiar todo (Python + Docker)
+clean-all: clean ## Limpiar todo (Python + Docker)
 
 # =============================================================================
 # CI/CD

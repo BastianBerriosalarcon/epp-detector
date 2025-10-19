@@ -175,11 +175,23 @@ azure-pipelines.yml
 # =============================================================================
 # Environment files (CRITICO: NO copiar secretos)
 # =============================================================================
+# ORDEN CRITICO: Docker procesa reglas de arriba a abajo
+# Las reglas de negacion (!) deben ir ANTES de las reglas generales
+
+# Paso 1: Incluir explicitamente .env.example
+!.env.example
+
+# Paso 2: Excluir .env principal (contiene secretos)
 .env
-.env.*
+
+# Paso 3: Excluir otros archivos .env especificos
 .env.local
-.env.*.local
-!.env.example  # Incluir ejemplo
+.env.prod
+.env.dev
+.env.test
+.env.staging
+.env.backup
+*.env.bak
 
 # =============================================================================
 # Temporal

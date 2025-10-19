@@ -109,3 +109,6 @@ models/checkpoints/
 tmp/
 temp/
 *.tmp
+
+# Claude IDE temporary files
+.claude/
