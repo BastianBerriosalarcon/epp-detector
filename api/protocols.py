@@ -6,9 +6,10 @@ the API layer to depend on abstractions rather than concrete implementations,
 following the Dependency Inversion Principle (DIP).
 """
 
-from typing import Protocol, List, Dict, Any, Optional
-import numpy as np
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Protocol
+
+import numpy as np
 
 
 class DetectorProtocol(Protocol):

@@ -7,13 +7,13 @@ This module provides middleware for:
 - Error tracking
 """
 
-import time
 import logging
-from typing import Dict, Tuple, Callable
+import time
 from collections import defaultdict
 from datetime import datetime, timedelta
+from typing import Callable, Dict, Tuple
 
-from fastapi import Request, Response, HTTPException, status
+from fastapi import HTTPException, Request, Response, status
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from api.config import Settings

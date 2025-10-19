@@ -11,22 +11,14 @@ from unittest.mock import Mock
 import pytest
 from fastapi import HTTPException
 
+from api.utils import (  # validate_image,; validate_image_dimensions,; preprocess_image,; letterbox_resize,; format_detections,; apply_nms,; calculate_iou,; check_epp_compliance,; draw_detections,
+    get_class_color,
+)
+
 # TODO: Descomentar cuando se implementen
 # import numpy as np
 # from PIL import Image
 
-from api.utils import (
-    # validate_image,
-    # validate_image_dimensions,
-    # preprocess_image,
-    # letterbox_resize,
-    # format_detections,
-    # apply_nms,
-    # calculate_iou,
-    # check_epp_compliance,
-    # draw_detections,
-    get_class_color,
-)
 
 
 # ============================================================================
@@ -467,21 +459,21 @@ def test_get_class_color_returns_tuple():
 
 def test_get_class_color_helmet_is_green():
     """
-    Test de color verde para hardhat.
+    Test de color amarillo para hardhat.
 
-    Verifica que hardhat sea verde (EPP correcto).
+    Verifica que hardhat sea amarillo en formato BGR (EPP correcto).
     """
     color = get_class_color("hardhat")
-    assert color == (0, 255, 0)  # Verde
+    assert color == (0, 255, 255)  # Amarillo en BGR
 
 
 def test_get_class_color_violations_are_red():
     """
     Test de color rojo para violaciones.
 
-    Verifica que head (sin hardhat) sea rojo.
+    Verifica que no_hardhat (sin casco) sea rojo en formato BGR.
     """
-    assert get_class_color("head") == (255, 0, 0)
+    assert get_class_color("no_hardhat") == (0, 0, 255)  # Rojo en BGR
 
 
 def test_get_class_color_unknown_class_returns_gray():
@@ -497,21 +489,23 @@ def test_get_class_color_unknown_class_returns_gray():
 @pytest.mark.parametrize(
     "class_name,expected_color",
     [
-        ("hardhat", (0, 255, 0)),  # Verde
-        ("head", (255, 0, 0)),  # Rojo (violacion)
-        ("person", (0, 191, 255)),  # Naranja
+        ("hardhat", (0, 255, 255)),  # Amarillo (BGR) - EPP
+        ("no_hardhat", (0, 0, 255)),  # Rojo (BGR) - Violación
+        ("person", (0, 255, 0)),  # Verde (BGR)
+        ("safety_vest", (0, 165, 255)),  # Naranja (BGR) - EPP
+        ("no_safety_vest", (0, 0, 200)),  # Rojo oscuro (BGR) - Violación
     ],
 )
 def test_get_class_color_all_classes(class_name: str, expected_color: tuple):
     """
     Test parametrizado de colores para todas las clases.
 
-    Verifica mapeo correcto de todas las clases EPP del modelo actual.
-    Modelo usa clases del dataset Roboflow: hardhat, head, person.
+    Verifica mapeo correcto de clases EPP del dataset Roboflow.
+    Colores en formato BGR (OpenCV).
 
     Args:
         class_name: Nombre de la clase (inglés)
-        expected_color: Color RGB esperado
+        expected_color: Color BGR esperado
     """
     assert get_class_color(class_name) == expected_color
 

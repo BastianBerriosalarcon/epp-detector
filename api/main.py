@@ -6,28 +6,28 @@ de la aplicación, incluyendo carga del modelo y tracking de métricas.
 """
 
 import io
-import time
 import logging
+import time
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, status, Depends
-from fastapi.responses import JSONResponse
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from fastapi.responses import JSONResponse
 from PIL import Image
+from pydantic import BaseModel, Field
 
-from api import __version__, EPP_CLASSES, EPP_CLASSES_ES
+from api import EPP_CLASSES, EPP_CLASSES_ES, __version__
 from api.config import Settings, get_settings
-from api.model import EPPDetector
-from api.validators import ImageValidator, create_validator
-from api.middleware import RateLimitMiddleware, RequestLoggingMiddleware
 from api.exceptions import (
     EPPDetectorError,
-    ModelNotLoadedError,
-    InvalidImageError,
     InferenceError,
+    InvalidImageError,
+    ModelNotLoadedError,
 )
+from api.middleware import RateLimitMiddleware, RequestLoggingMiddleware
+from api.model import EPPDetector
+from api.validators import ImageValidator, create_validator
 
 # ============================================================================
 # Logging Setup

@@ -10,10 +10,11 @@ from pathlib import Path
 from typing import Dict, List, Union
 
 try:
-    from pydantic_settings import BaseSettings
     from pydantic import Field, field_validator
+    from pydantic_settings import BaseSettings
 except ImportError:
-    from pydantic import BaseSettings, Field, validator as field_validator
+    from pydantic import BaseSettings, Field
+    from pydantic import validator as field_validator
 
 
 class Settings(BaseSettings):

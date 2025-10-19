@@ -6,17 +6,15 @@ y formateo de resultados.
 """
 
 import io
-from typing import Dict, List, Any, Tuple
 from pathlib import Path
+from typing import Any, Dict, List, Tuple
 
-from fastapi import UploadFile, HTTPException, status
-
-from api import EPP_CLASSES_ES, CLASS_COLORS
-
-import numpy as np
-from PIL import Image
 import cv2
+import numpy as np
+from fastapi import HTTPException, UploadFile, status
+from PIL import Image
 
+from api import CLASS_COLORS, EPP_CLASSES_ES
 
 # ============================================================================
 # Validación de imágenes

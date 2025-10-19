@@ -6,15 +6,16 @@ incluyendo carga de modelo, inferencia y postprocessing.
 """
 
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+
+from api.model import EPPDetector
 
 # TODO: Descomentar cuando se implementen
 # import numpy as np
 # from PIL import Image
 
-from api.model import EPPDetector
 
 
 # ============================================================================

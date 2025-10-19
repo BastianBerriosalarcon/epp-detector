@@ -7,8 +7,8 @@ This module provides robust model loading functionality with:
 - Support for multiple model formats (PyTorch, ONNX)
 """
 
-import time
 import logging
+import time
 from pathlib import Path
 from typing import Any, Optional, Union
 

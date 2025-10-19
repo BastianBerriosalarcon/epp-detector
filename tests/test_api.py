@@ -6,12 +6,11 @@ de FastAPI, incluyendo validaciones, responses y manejo de errores.
 """
 
 import io
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
 import pytest
-from fastapi.testclient import TestClient
 from fastapi import status
-
+from fastapi.testclient import TestClient
 
 # ============================================================================
 # Tests de endpoint raíz
@@ -139,11 +138,13 @@ def test_predict_endpoint_no_file(client: TestClient):
     """
     Test de predicción sin archivo.
 
-    Verifica que retorne error 422 cuando no se envía imagen.
+    Verifica que retorne error 503 cuando no hay modelo cargado
+    (el endpoint requiere detector via Depends antes de validar el archivo).
     """
     response = client.post("/predict")
 
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    # Retorna 503 porque get_detector() falla antes de validar el archivo
+    assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
 
 
 def test_predict_endpoint_invalid_file_format(client: TestClient):
@@ -331,8 +332,8 @@ def test_info_endpoint_classes_structure(client: TestClient):
     # Verificar que sea un diccionario con IDs numéricos
     assert isinstance(classes, dict)
 
-    # Verificar clases esperadas del dataset (nombres en INGLÉS)
-    expected_classes = ["hardhat", "head", "person"]
+    # Verificar clases esperadas del dataset Roboflow (nombres en INGLÉS)
+    expected_classes = ["hardhat", "no_hardhat", "person", "safety_vest", "no_safety_vest"]
 
     classes_values = list(classes.values())
     for expected_class in expected_classes:

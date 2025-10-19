@@ -6,18 +6,19 @@ incluyendo clientes de API, datos de prueba y mocks.
 """
 
 import io
-from typing import Generator, Any
+from typing import Any, Generator
 from unittest.mock import Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
+from api.main import app
+from api.model import EPPDetector
+
 # TODO: Descomentar cuando se implementen
 # import numpy as np
 # from PIL import Image
 
-from api.main import app
-from api.model import EPPDetector
 
 
 # ============================================================================
@@ -70,7 +71,15 @@ def client_with_mock_model(client: TestClient) -> Generator[TestClient, None, No
         }
     ]
 
-    with patch("api.main.detector", mock_detector):
+    # Mock validator that returns image dimensions
+    mock_validator = Mock()
+    mock_validator.validate_all.return_value = (640, 640)  # width, height
+
+    with patch("api.main.app_state") as mock_state:
+        mock_state.detector = mock_detector
+        mock_state.validator = mock_validator
+        mock_state.request_count = 0
+        mock_state.total_inference_time = 0.0
         yield client
 
 
@@ -90,19 +99,16 @@ def sample_image_bytes() -> bytes:
     Returns:
         Bytes de una imagen PNG válida
 
-    TODO: Generar imagen PIL real con contenido variado
     TODO: Agregar fixtures para diferentes tamaños (small, medium, large)
     TODO: Agregar fixtures para diferentes formatos (jpg, png, bmp)
     """
-    # TODO: Implementar generación real de imagen
-    # img = Image.new("RGB", (640, 640), color=(73, 109, 137))
-    # img_bytes = io.BytesIO()
-    # img.save(img_bytes, format="PNG")
-    # img_bytes.seek(0)
-    # return img_bytes.getvalue()
+    from PIL import Image
 
-    # MOCK: Placeholder para imagen (reemplazar cuando se implemente PIL)
-    return b"fake_image_data_placeholder"
+    img = Image.new("RGB", (640, 640), color=(73, 109, 137))
+    img_bytes = io.BytesIO()
+    img.save(img_bytes, format="PNG")
+    img_bytes.seek(0)
+    return img_bytes.getvalue()
 
 
 @pytest.fixture
@@ -237,12 +243,23 @@ def mock_model() -> Mock:
         }
     ]
 
-    # Simular get_model_info
+    # Simular get_model_info (usar clases reales del dataset Roboflow)
     mock.get_model_info.return_value = {
         "model_path": "models/yolov8n_epp.onnx",
         "model_type": "onnx",
         "input_size": 640,
-        "classes": {0: "hardhat", 1: "head", 2: "person"},
+        "classes": {
+            0: "hardhat",
+            1: "mask",
+            2: "no_hardhat",
+            3: "no_mask",
+            4: "no_safety_vest",
+            5: "person",
+            6: "safety_cone",
+            7: "safety_vest",
+            8: "machinery",
+            9: "vehicle",
+        },
         "confidence_threshold": 0.5,
         "iou_threshold": 0.45,
         "is_loaded": True,
@@ -271,14 +288,14 @@ def mock_model_with_violations(mock_model: Mock) -> Mock:
     Mock de detector que encuentra violaciones de EPP.
 
     Returns:
-        Mock que detecta personas sin casco (head - violación)
+        Mock que detecta personas sin casco (no_hardhat - violación)
 
     TODO: Implementar detecciones de violaciones
     """
     mock_model.predict.return_value = [
         {
-            "class_id": 1,
-            "class_name": "head",
+            "class_id": 2,
+            "class_name": "no_hardhat",
             "confidence": 0.88,
             "bbox": [120.5, 50.2, 200.8, 150.3],
             "bbox_norm": [0.251, 0.156, 0.125, 0.156],

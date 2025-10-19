@@ -14,10 +14,10 @@ from PIL import Image
 
 from api.config import Settings
 from api.exceptions import (
-    InvalidImageError,
-    InvalidImageFormatError,
     ImageTooLargeError,
     InvalidImageDimensionsError,
+    InvalidImageError,
+    InvalidImageFormatError,
 )
 
 logger = logging.getLogger(__name__)
