@@ -5,15 +5,9 @@ Suite de tests para validación, preprocessing,
 postprocessing y análisis de EPP.
 """
 
-import io
-from unittest.mock import Mock
-
 import pytest
-from fastapi import HTTPException
 
-from api.utils import (  # validate_image,; validate_image_dimensions,; preprocess_image,; letterbox_resize,; format_detections,; apply_nms,; calculate_iou,; check_epp_compliance,; draw_detections,
-    get_class_color,
-)
+from api.utils import get_class_color
 
 # TODO: Descomentar cuando se implementen
 # import numpy as np

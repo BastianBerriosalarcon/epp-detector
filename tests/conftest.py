@@ -6,7 +6,7 @@ incluyendo clientes de API, datos de prueba y mocks.
 """
 
 import io
-from typing import Any, Generator
+from typing import Generator
 from unittest.mock import Mock, patch
 
 import pytest

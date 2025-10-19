@@ -10,7 +10,7 @@ This module provides robust model loading functionality with:
 import logging
 import time
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 from api.config import Settings
 from api.exceptions import ModelLoadError
@@ -235,7 +235,10 @@ class ModelLoader:
         except ImportError as e:
             raise ModelLoadError(
                 model_path=str(model_path),
-                reason="onnxruntime package not installed. Run: pip install onnxruntime or onnxruntime-gpu",
+                reason=(
+                    "onnxruntime package not installed. "
+                    "Run: pip install onnxruntime or onnxruntime-gpu"
+                ),
             ) from e
         except Exception as e:
             raise ModelLoadError(

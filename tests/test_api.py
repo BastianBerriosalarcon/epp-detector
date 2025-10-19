@@ -6,7 +6,6 @@ de FastAPI, incluyendo validaciones, responses y manejo de errores.
 """
 
 import io
-from unittest.mock import Mock, patch
 
 import pytest
 from fastapi import status
@@ -78,9 +77,10 @@ def test_health_endpoint_model_not_loaded(client: TestClient):
     response = client.get("/health")
 
     assert response.status_code == status.HTTP_200_OK
-    data = response.json()
 
     # Si modelo no está cargado, model_loaded debe ser False
+    # TODO: Descomentar cuando se implemente:
+    # data = response.json()
     # assert data["model_loaded"] is False
     # assert data["status"] == "degraded"
 
@@ -159,7 +159,7 @@ def test_predict_endpoint_invalid_file_format(client: TestClient):
     # Archivo de texto en lugar de imagen
     files = {"file": ("test.txt", io.BytesIO(b"not an image"), "text/plain")}
 
-    response = client.post("/predict", files=files)
+    _ = client.post("/predict", files=files)
 
     # TODO: Cuando se implemente validación, debe retornar 400
     # assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -177,7 +177,7 @@ def test_predict_endpoint_large_image(client: TestClient, large_image_bytes: byt
     """
     files = {"file": ("large.jpg", io.BytesIO(large_image_bytes), "image/jpeg")}
 
-    response = client.post("/predict", files=files)
+    _ = client.post("/predict", files=files)
 
     # TODO: Cuando se implemente validación, debe retornar 413
     # assert response.status_code == status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
@@ -191,7 +191,7 @@ def test_predict_endpoint_model_not_available(client: TestClient, sample_image_b
 
     TODO: Mockear detector como None
     """
-    files = {"file": ("test.jpg", io.BytesIO(sample_image_bytes), "image/jpeg")}
+    _ = {"file": ("test.jpg", io.BytesIO(sample_image_bytes), "image/jpeg")}
 
     # TODO: Mock detector = None
     # with patch("api.main.detector", None):
@@ -271,8 +271,7 @@ def test_metrics_increment_after_prediction(
     """
     # Obtener métricas iniciales
     initial_response = client_with_mock_model.get("/metrics")
-    initial_data = initial_response.json()
-    initial_count = initial_data["requests_total"]
+    _ = initial_response.json()
 
     # Hacer predicción
     files = {"file": ("test.jpg", io.BytesIO(sample_image_bytes), "image/jpeg")}
@@ -280,10 +279,11 @@ def test_metrics_increment_after_prediction(
 
     # Obtener métricas después
     final_response = client_with_mock_model.get("/metrics")
-    final_data = final_response.json()
-    final_count = final_data["requests_total"]
+    _ = final_response.json()
 
     # TODO: Verificar incremento (requiere reset de métricas)
+    # initial_count = initial_data["requests_total"]
+    # final_count = final_data["requests_total"]
     # assert final_count == initial_count + 1
 
 
@@ -444,7 +444,7 @@ def test_predict_endpoint_latency(client_with_mock_model: TestClient, sample_ima
     response = client_with_mock_model.post("/predict", files=files)
 
     data = response.json()
-    latency = data["inference_time_ms"]
+    _ = data["inference_time_ms"]
 
     # TODO: Definir threshold realista
     # assert latency < 100.0, f"Latencia muy alta: {latency}ms"
@@ -529,7 +529,7 @@ def test_predict_rejects_invalid_extensions(client: TestClient, invalid_extensio
     """
     files = {"file": (invalid_extension, io.BytesIO(b"fake data"), "application/octet-stream")}
 
-    response = client.post("/predict", files=files)
+    _ = client.post("/predict", files=files)
 
     # TODO: Cuando se implemente validación
     # assert response.status_code == status.HTTP_400_BAD_REQUEST

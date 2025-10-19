@@ -11,7 +11,7 @@ import logging
 import time
 from collections import defaultdict
 from datetime import datetime, timedelta
-from typing import Callable, Dict, Tuple
+from typing import Callable, Dict
 
 from fastapi import HTTPException, Request, Response, status
 from starlette.middleware.base import BaseHTTPMiddleware

@@ -9,7 +9,7 @@ following the Dependency Inversion Principle (DIP).
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol
 
-import numpy as np
+import numpy as np  # noqa: F401 - used in type hints and docstring examples
 
 
 class DetectorProtocol(Protocol):

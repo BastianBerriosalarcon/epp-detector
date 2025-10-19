@@ -413,7 +413,7 @@ async def predict_epp(
     try:
         width, height = validator.validate_all(image_bytes, file.filename)
         logger.debug(f"Image validation passed: {width}x{height}")
-    except InvalidImageError as e:
+    except InvalidImageError:
         # Exception handler will catch this
         raise
 
@@ -444,7 +444,7 @@ async def predict_epp(
             for det in detections_raw
         ]
 
-    except InferenceError as e:
+    except InferenceError:
         # Exception handler will catch this
         raise
 

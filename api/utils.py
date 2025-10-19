@@ -14,7 +14,7 @@ import numpy as np
 from fastapi import HTTPException, UploadFile, status
 from PIL import Image
 
-from api import CLASS_COLORS, EPP_CLASSES_ES
+from api import CLASS_COLORS
 
 # ============================================================================
 # Validación de imágenes
@@ -394,9 +394,12 @@ def check_epp_compliance(detections: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Evalúa si una persona cumple con EPP obligatorio según DS 132.
 
-    Lógica de cumplimiento basada en dataset actualizado (hardhat, safety_vest, no_hardhat, no_safety_vest, person):
-    - COMPLIANT: Si se detectan "hardhat" Y "safety_vest", y NO se detectan "no_hardhat" ni "no_safety_vest"
-    - NON_COMPLIANT: Si se detecta "no_hardhat" o "no_safety_vest" (violación crítica)
+    Lógica de cumplimiento basada en dataset actualizado (hardhat,
+    safety_vest, no_hardhat, no_safety_vest, person):
+    - COMPLIANT: Si se detectan "hardhat" Y "safety_vest", y NO se
+      detectan "no_hardhat" ni "no_safety_vest"
+    - NON_COMPLIANT: Si se detecta "no_hardhat" o "no_safety_vest"
+      (violación crítica)
     - PARTIAL_COMPLIANT: Si se detecta solo hardhat o solo safety_vest
     - UNKNOWN: Si solo se detecta "person" sin información de EPP
 

@@ -5,8 +5,7 @@ Suite de tests que verifica el comportamiento del detector,
 incluyendo carga de modelo, inferencia y postprocessing.
 """
 
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock
 
 import pytest
 
@@ -53,7 +52,7 @@ def test_detector_init_with_invalid_path():
     TODO: Descomentar cuando se implemente validación
     """
     with pytest.raises(FileNotFoundError):
-        detector = EPPDetector("nonexistent_model.onnx")
+        _ = EPPDetector("nonexistent_model.onnx")
 
 
 @pytest.mark.skip(reason="Requiere implementación de validación de formato")
@@ -73,7 +72,7 @@ def test_detector_init_with_unsupported_format(tmp_path):
     invalid_model.write_text("fake model")
 
     with pytest.raises(ValueError):
-        detector = EPPDetector(str(invalid_model))
+        _ = EPPDetector(str(invalid_model))
 
 
 def test_detector_default_parameters(temp_model_path: str):

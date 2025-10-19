@@ -216,7 +216,7 @@ class ImageValidator:
 
         logger.info(
             f"All validations passed for {filename}: "
-            f"{width}x{height}, {len(image_bytes)/1024:.2f}KB"
+            f"{width}x{height}, {len(image_bytes) / 1024:.2f}KB"
         )
 
         return width, height

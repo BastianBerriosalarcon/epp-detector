@@ -5,9 +5,8 @@ Este módulo centraliza todas las configuraciones del sistema,
 permitiendo fácil ajuste de parámetros sin modificar código.
 """
 
-import os
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import List, Union
 
 try:
     from pydantic import Field, field_validator
@@ -238,7 +237,8 @@ class Settings(BaseSettings):
         Handles formats from environment variables:
         - "*" -> ["*"]
         - "http://localhost:3000" -> ["http://localhost:3000"]
-        - "http://localhost:3000,http://localhost:8080" -> ["http://localhost:3000", "http://localhost:8080"]
+        - "http://localhost:3000,http://localhost:8080" ->
+          ["http://localhost:3000", "http://localhost:8080"]
         """
         if isinstance(v, list):
             return v

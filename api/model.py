@@ -8,9 +8,8 @@ PyTorch (.pt) y ONNX Runtime (.onnx) para deployment optimizado.
 
 import logging
 import time
-from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
@@ -166,7 +165,7 @@ class EPPDetector:
             try:
                 _ = self._run_inference(dummy_image)
             except Exception as e:
-                logger.warning(f"Warmup iteration {i+1} failed: {e}")
+                logger.warning(f"Warmup iteration {i + 1} failed: {e}")
 
         elapsed = (time.time() - start_time) * 1000
         avg_time = elapsed / num_iterations
@@ -282,7 +281,7 @@ class EPPDetector:
                 all_results.extend(batch_detections)
 
             except Exception as e:
-                logger.error(f"Batch inference failed at batch {i//batch_size}: {e}")
+                logger.error(f"Batch inference failed at batch {i // batch_size}: {e}")
                 raise InferenceError(reason=f"Batch processing failed: {str(e)}") from e
 
         logger.debug(f"Batch processing completed: {len(all_results)} results")
