@@ -39,14 +39,11 @@ COPY requirements.txt .
 
 # OPTIMIZACION: Crear wheels con flags adicionales para reducir tamaño
 # --no-cache-dir: No cachear (ya está en ENV pero reforzamos)
+# Incluye requests junto con requirements.txt en una sola operación
 RUN pip wheel \
     --no-cache-dir \
     --wheel-dir /wheels \
-    -r requirements.txt \
-    && pip wheel \
-    --no-cache-dir \
-    --wheel-dir /wheels \
-    requests \
+    -r requirements.txt requests \
     && rm -rf /root/.cache \
     && rm -rf /tmp/* /var/tmp/*
 
