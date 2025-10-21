@@ -23,18 +23,24 @@ imgsz: 640
 # ============================================================================
 
 # Ruta al archivo YAML del dataset (relativa a raíz del proyecto o absoluta)
-data: data/epp_dataset.yaml
+data: data/roboflow/data.yaml
 
 # Número de clases (debe coincidir con dataset YAML)
-nc: 5
+nc: 10
 
 # Nombres de clases (deben coincidir con orden en dataset YAML)
+# NOTA: Estas clases coinciden con data/roboflow/data.yaml
 names:
-  - hardhat
-  - safety_vest
-  - no_hardhat
-  - no_safety_vest
-  - person
+  - Hardhat           # Clase 0 - Casco de seguridad
+  - Mask              # Clase 1 - Mascarilla
+  - NO-Hardhat        # Clase 2 - Sin casco (VIOLACIÓN)
+  - NO-Mask           # Clase 3 - Sin mascarilla
+  - NO-Safety Vest    # Clase 4 - Sin chaleco (VIOLACIÓN)
+  - Person            # Clase 5 - Persona
+  - Safety Cone       # Clase 6 - Cono de seguridad
+  - Safety Vest       # Clase 7 - Chaleco reflectante
+  - machinery         # Clase 8 - Maquinaria
+  - vehicle           # Clase 9 - Vehículo
 
 # ============================================================================
 # Hiperparámetros de Entrenamiento
