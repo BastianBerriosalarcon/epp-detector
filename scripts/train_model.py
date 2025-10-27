@@ -125,10 +125,20 @@ def validate_dataset(data_yaml_path: Path) -> bool:
             if not img_path.exists():
                 raise ConfigurationError(f"Image directory not found: {img_path}")
 
-            # Check labels
+            # Check labels - support both structures:
+            # 1. dataset_root/labels/split (old structure)
+            # 2. dataset_root/split/labels (Roboflow structure)
             label_path = dataset_root / 'labels' / split
             if not label_path.exists():
-                raise ConfigurationError(f"Label directory not found: {label_path}")
+                # Try Roboflow structure
+                split_name = 'train' if split == 'train' else 'valid'
+                label_path = dataset_root / split_name / 'labels'
+                if not label_path.exists():
+                    raise ConfigurationError(
+                        f"Label directory not found. Tried:\n"
+                        f"  {dataset_root / 'labels' / split}\n"
+                        f"  {label_path}"
+                    )
 
             # Check for images
             images = list(img_path.glob('*.jpg')) + list(img_path.glob('*.png'))
@@ -473,6 +483,13 @@ Examples:
         help='Skip copying model to models/ directory after training'
     )
 
+    parser.add_argument(
+        '--yes',
+        '-y',
+        action='store_true',
+        help='Skip confirmation prompts (useful for automated scripts)'
+    )
+
     args = parser.parse_args()
 
     try:
@@ -513,11 +530,13 @@ Examples:
         )
         logger.info(f"Estimated training time: {estimated_hours:.1f} hours")
 
-        if not gpu_info['available']:
+        if not gpu_info['available'] and not args.yes:
             response = input("\nNo GPU detected. Training will be very slow. Continue? (y/N): ")
             if response.lower() != 'y':
                 logger.info("Training cancelled by user")
                 sys.exit(0)
+        elif not gpu_info['available'] and args.yes:
+            logger.warning("Continuing with CPU training (--yes flag provided)")
 
         # Load or create model
         model = load_or_create_model(
